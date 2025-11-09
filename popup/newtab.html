@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Focus On</title>
+  <link rel="stylesheet" type="text/css" href="newtab.css">
+</head>
+<body>
+  
+  <div id="center-focus-container">
+    <p id="date">YYYY년 M월 D일</p> 
+    <p id="time">00:00:00</p>
+    <form id="search-form" action="https://www.google.com/search" method="get" target="_self">
+      <input type="text" id="search-input" name="q" placeholder="Google 검색 또는 URL 입력" autofocus>
+      <button type="submit" id="search-button">검색</button>
+      
+      <div id="autocomplete-container">
+          <div id="autocomplete-results">
+              </div>
+      </div>
+    </form>
+    <p id="goal-text">🔥 오늘 당신의 목표 문구를 입력하세요. 🔥</p>
+  </div>
+  
+  <div id="chrome-shortcuts-container">
+    <a href="chrome://apps/" class="shortcut-icon" title="앱"></a>
+    <a href="chrome://downloads/" class="shortcut-icon" title="다운로드"></a>
+    <a href="chrome://history/" class="shortcut-icon" title="기록"></a>
+  </div>
+
+  <div id="todo-list-container">
+    <div id="todo-header">
+      <h2>오늘의 할 일</h2>
+      <button id="close-todo-btn" title="할 일 목록 닫기">X</button>
+    </div>
+    
+    <form id="add-todo-form">
+      <input type="text" id="todo-input" placeholder="새 할 일을 입력하세요" required>
+      <button type="submit" id="add-todo-button">추가</button>
+    </form>
+
+    <ul id="todo-list">
+      </ul>
+  </div>
+  
+  <div id="footer-buttons">
+    <button id="settings-btn" title="설정">⚙️</button>
+    <button id="todo-toggle-btn" title="할 일 목록 보기/숨기기">📝</button>
+  </div>
+  
+  <div id="settings-panel">
+    <h3>설정 및 사용자 지정</h3>
+    
+    <div class="setting-section">
+      <h4>배경 이미지 설정</h4>
+      <p>이미지 URL 입력:</p>
+      <input type="url" id="background-url-input" placeholder="웹 이미지 주소를 붙여넣으세요">
+      <button id="save-background-btn">배경 적용</button>
+    </div>
+
+    <div class="setting-section">
+        <h4>집중 웹사이트 관리</h4>
+        <div id="accessible-urls-list">
+            </div>
+        <form id="add-url-form">
+            <input type="url" id="url-input" placeholder="접근 허용할 URL 입력 (예: https://chat.google.com)" required>
+            <button type="submit" id="add-url-button">URL 추가</button>
+        </form>
+        <p class="setting-desc">여기에 등록된 URL은 새 탭에서 빠르게 접근할 수 있습니다.</p>
+    </div>
+
+    <button id="close-settings-btn">닫기</button>
+  </div>
+
+  <script src="newtab.js"></script>
+</body>
+</html>
