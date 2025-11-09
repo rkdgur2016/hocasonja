@@ -23,6 +23,7 @@
     "storage" 
   ],
   "host_permissions": [
-    "https://suggestqueries.google.com/"
+    "https://suggestqueries.google.com/",
+    "https://www.google.com/"
   ]
 }

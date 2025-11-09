@@ -1,79 +1,101 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <title>Focus On</title>
-  <link rel="stylesheet" type="text/css" href="newtab.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>나만의 생산성 대시보드</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLMDJ/cnS/6p9VnE/T6U5Gq6Q3ZpG8Qk5K2c8K5yE5A5v6Zg8C5k4R5yV4g2F5p5Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="newtab.css"/>
 </head>
-<body>
-  
-  <div id="center-focus-container">
-    <p id="date">YYYY년 M월 D일</p> 
-    <p id="time">00:00:00</p>
-    <form id="search-form" action="https://www.google.com/search" method="get" target="_self">
-      <input type="text" id="search-input" name="q" placeholder="Google 검색 또는 URL 입력" autofocus>
-      <button type="submit" id="search-button">검색</button>
-      
-      <div id="autocomplete-container">
-          <div id="autocomplete-results">
-              </div>
-      </div>
-    </form>
-    <p id="goal-text">🔥 오늘 당신의 목표 문구를 입력하세요. 🔥</p>
-  </div>
-  
-  <div id="chrome-shortcuts-container">
-    <a href="chrome://apps/" class="shortcut-icon" title="앱"></a>
-    <a href="chrome://downloads/" class="shortcut-icon" title="다운로드"></a>
-    <a href="chrome://history/" class="shortcut-icon" title="기록"></a>
-  </div>
+<body class="">
 
-  <div id="todo-list-container">
-    <div id="todo-header">
-      <h2>오늘의 할 일</h2>
-      <button id="close-todo-btn" title="할 일 목록 닫기">X</button>
-    </div>
-    
-    <form id="add-todo-form">
-      <input type="text" id="todo-input" placeholder="새 할 일을 입력하세요" required>
-      <button type="submit" id="add-todo-button">추가</button>
-    </form>
-
-    <ul id="todo-list">
-      </ul>
-  </div>
-  
-  <div id="footer-buttons">
-    <button id="settings-btn" title="설정">⚙️</button>
-    <button id="todo-toggle-btn" title="할 일 목록 보기/숨기기">📝</button>
-  </div>
-  
-  <div id="settings-panel">
-    <h3>설정 및 사용자 지정</h3>
-    
-    <div class="setting-section">
-      <h4>배경 이미지 설정</h4>
-      <p>이미지 URL 입력:</p>
-      <input type="url" id="background-url-input" placeholder="웹 이미지 주소를 붙여넣으세요">
-      <button id="save-background-btn">배경 적용</button>
+    <!-- Focus Mode Indicator -->
+    <div class="focus-mode-indicator">
+        🔥 집중 모드 활성화 중! 허용 목록 외 접근은 차단됩니다. 🔥
     </div>
 
-    <div class="setting-section">
-        <h4>집중 웹사이트 관리</h4>
-        <div id="accessible-urls-list">
-            </div>
-        <form id="add-url-form">
-            <input type="url" id="url-input" placeholder="접근 허용할 URL 입력 (예: https://chat.google.com)" required>
-            <button type="submit" id="add-url-button">URL 추가</button>
+    <div class="container">
+        <!-- Time & Goal Area -->
+        <div class="time-goal-area">
+            <div id="date"></div>
+            <div id="time">00:00:00</div>
+            <p id="goal-text">🔥 오늘 당신의 목표 문구를 입력하세요. 🔥</p>
+        </div>
+
+        <!-- Search Area -->
+        <form id="search-form" action="https://www.google.com/search" method="GET">
+            <input type="text" id="search-input" name="q" placeholder="Google 검색 또는 URL 입력...">
+            <div id="autocomplete-results"></div>
         </form>
-        <p class="setting-desc">여기에 등록된 URL은 새 탭에서 빠르게 접근할 수 있습니다.</p>
+
+        <!-- Shortcuts Area -->
+        <div class="shortcuts-area">
+            <div class="shortcuts-list" id="user-shortcuts-list">
+                <!-- User-defined shortcuts will be rendered here -->
+            </div>
+        </div>
     </div>
 
-    <button id="close-settings-btn">닫기</button>
-  </div>
+    <!-- ToDo List -->
+    <div id="todo-list-container" class="hidden">
+        <h2 class="text-xl font-bold mb-2">오늘 할 일</h2>
+        <ul id="todo-list">
+            <!-- ToDo items here -->
+        </ul>
+        <form id="add-todo-form">
+            <input type="text" id="todo-input" placeholder="새로운 할 일 추가" required>
+            <button type="submit">+</button>
+        </form>
+    </div>
 
-  <script src="newtab.js"></script>
+    <!-- Utility Buttons (Circular Icons) -->
+    <!-- 할 일 토글 버튼: Font Awesome list-check 아이콘 사용 -->
+    <button id="todo-toggle-btn" title="할 일 토글"><i class="fas fa-list-check"></i></button>
+    <!-- 설정 버튼: Font Awesome cog 아이콘 사용 -->
+    <button id="settings-btn" title="설정 및 사용자 지정"><i class="fas fa-cog"></i></button>
+
+    <!-- Settings Panel (위치 변경됨) -->
+    <div id="settings-panel">
+        <div class="settings-content">
+            <button id="close-settings-btn">✕</button>
+            <h2 class="text-2xl font-bold mb-5">⚙️ 설정 및 사용자 지정</h2>
+
+            <!-- Focus Mode Settings -->
+            <div class="setting-section">
+                <div class="setting-row">
+                    <span class="setting-title" style="color:var(--focus-mode-color);">집중 모드</span>
+                    <label class="switch">
+                        <input type="checkbox" id="focus-mode-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p class="setting-desc">집중 모드가 켜지면, 아래 허용 목록에 없는 모든 URL 접근은 차단됩니다.</p>
+                
+                <div class="mt-4">
+                    <span class="setting-title">자동 스케줄 설정</span>
+                    <div class="flex-container-small">
+                        <span>시작 시간:</span>
+                        <input type="time" id="focus-start-time" class="setting-time-input">
+                        <span>종료 시간:</span>
+                        <input type="time" id="focus-end-time" class="setting-time-input">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accessible URLs Settings -->
+            <div class="setting-section">
+                <div class="setting-title">허용 웹사이트 목록 (Allowlist)</div>
+                <p class="setting-desc">집중 모드 시 접근을 허용할 URL을 입력하세요. (예: https://google.com)</p>
+                <form id="add-url-form" class="flex-group">
+                    <input type="url" id="url-input" placeholder="URL 입력 (예: google.com)" required class="input-field-dark">
+                    <button type="submit" class="submit_btn">추가</button>
+                </form>
+                <div id="accessible-urls-list" class="scrollable-content">
+                    <!-- URL list will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
+<script src="newtab.js"></script>
 </html>

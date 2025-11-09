@@ -1,342 +1,513 @@
-/* --- 기본 설정 및 스크롤 방지 --- */
-body, html {
-  height: 100%; 
-  width: 100%;  
-  margin: 0;   
-  overflow: hidden; /* 스크롤 방지 */
-  
-  display: flex;
-  justify-content: center;
-  
-  /* 배경 이미지 설정 */
-  background: url('/images/focus_on_bg1.jpg') no-repeat center center fixed; 
-  background-size: cover;
-  background-position: center center;
-  transition: background-image 0.5s ease; 
-  
-  color: white;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6); 
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+    :root {
+        --primary-color: #4CAF50; /* Green */
+        --secondary-color: #2196F3; /* Blue */
+        --background-color: #1a1a1a;
+        --text-color: #ffffff;
+        --card-bg: rgba(255, 255, 255, 0.1);
+        --shadow-color: rgba(0, 0, 0, 0.3);
+        --focus-mode-color: #EF4444; /* Red for alert */
+    }
 
-/* Chrome 맞춤설정 바 주변 배경색과 일치시켜 시각적으로 확장 */
-html {
-    background-color: black; 
-}
+    body {
+        font-family: 'Inter', sans-serif;
+        background: linear-gradient(135deg, #1e3a8a 0%, #0c1c4b 100%);
+        color: var(--text-color);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+        transition: background-color 0.5s;
+    }
 
+    body.focus-mode {
+        background: #1a1a1a;
+    }
 
-/* --- 중앙 집중 컨테이너 스타일 --- */
-#center-focus-container {
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 600px;
-    padding-top: 15vh; /* 상단에서 띄우는 간격 */
-}
+    .focus-mode-indicator {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background-color: var(--focus-mode-color);
+        color: white;
+        padding: 5px 0;
+        text-align: center;
+        font-weight: bold;
+        z-index: 1000;
+        box-shadow: 0 4px 6px var(--shadow-color);
+        display: none;
+        animation: pulse 1.5s infinite;
+    }
 
-/* 날짜 스타일 (시계보다 작게) */
-#date {
-    font-size: 1.5em; 
-    font-weight: 400;
-    margin-bottom: 5px;
-}
+    body.focus-mode .focus-mode-indicator {
+        display: block;
+    }
 
-#time {
-  font-size: 8em;
-  font-weight: 300;
-  letter-spacing: 2px;
-  margin: 0;
-}
+    @keyframes pulse {
+        0% { opacity: 0.9; }
+        50% { opacity: 1.0; }
+        100% { opacity: 0.9; }
+    }
+    /* -------------------------------------- */
 
-/* 목표 문구 스타일 */
-#goal-text {
-    font-size: 1.5em;
-    margin: 5% 0 5%; 
-    padding: 5px 10px;
-    border-bottom: 2px solid rgba(255, 255, 255, 0.7);
-    cursor: pointer; 
-}
+    .container {
+        width: 100%;
+        max-width: 1000px;
+        margin-top: 50px;
+    }
 
-/* 목표 문구 편집 입력 필드 스타일 */
-#goal-text + input[type="text"] {
-    font-size: 1.5em;
-    text-align: center;
-    border: none;
-    padding: 5px 0;
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    outline: none;
-    border-radius: 5px;
-    width: 100%;
-}
+    /* Time & Goal */
+    .time-goal-area {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+    #date {
+        font-size: 1.5rem;
+        opacity: 0.8;
+        margin-bottom: 5px;
+    }
+    #time {
+        font-size: 5rem;
+        font-weight: 700;
+        letter-spacing: -2px;
+        text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+    }
+    #goal-text {
+        font-size: 1.2rem;
+        margin-top: 15px;
+        padding: 5px 10px;
+        cursor: pointer;
+        border-radius: 5px;
+        transition: background 0.3s;
+    }
+    #goal-text:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+    #goal-input-editor {
+        font-size: 1.2rem;
+        text-align: center;
+        color: #1a1a1a;
+        border-radius: 5px;
+        padding: 5px 10px;
+        width: 80%;
+        max-width: 500px;
+    }
 
-#goal-input-editor {
-    /* 폰트 사이즈를 1.5em에서 2.5em으로 대폭 확대 */
-    font-size: 2.5em !important; 
-    font-weight: 500;
-    text-align: center;
-    border: none;
-    padding: 10px 0; /* 패딩 증가 */
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    outline: none;
-    border-radius: 5px;
-    width: 80% !important; /* 너비를 80%로 확대 */
-    transition: all 0.3s;
-}
+    /* Search */
+    #search-form {
+        position: relative;
+        max-width: 600px;
+        margin: 0 auto 50px;
+    }
+    #search-input {
+        width: 100%;
+        padding: 12px 12px;
+        border-radius: 50px;
+        border: none;
+        font-size: 1.1rem;
+        background-color: rgba(255, 255, 255, 0.95);
+        color: #1a1a1a;
+        box-shadow: 0 5px 15px var(--shadow-color);
+    }
+    #autocomplete-results {
+        position: absolute;
+        top: 100%;
+        left: 5%;
+        right: 1%;
+        background-color: white;
+        border-radius: 0 0 10px 10px;
+        box-shadow: 0 5px 15px var(--shadow-color);
+        overflow: none;
+        z-index: 10;
+        color: #1a1a1a;
+    }
+    .autocomplete-item {
+        padding: 10px 20px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+    }
+    .autocomplete-item:last-child {
+        border-bottom: none;
+    }
+    .autocomplete-item:hover, .autocomplete-item.active {
+        background-color: #f0f0f0;
+    }
 
-/* --- 검색창 및 자동 완성 스타일 --- */
-#search-form {
-  display: flex;
-  margin-top: 20px;
-  max-width: 500px;
-  width: 100%; 
-  position: relative; /* 자동 완성 목록을 기준으로 정렬 */
-}
-#search-input {
-  padding: 12px 20px;
-  border: none;
-  border-radius: 25px 0 0 25px;
-  font-size: 1.1em;
-  flex-grow: 1; 
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-  outline: none;
-  color: #333;
-  z-index: 10;
-}
-#search-button {
-  padding: 12px 25px;
-  border: none;
-  border-radius: 0 25px 25px 0;
-  background-color: #FFC107;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-  color: #333;
-  font-size: 1.1em;
-  cursor: pointer;
-  transition: background-color 0.3s;
-  z-index: 10;
-}
-#search-button:hover {
-  background-color: #ff9800;
-}
+    /* Shortcuts (개선된 부분) */
+    .shortcuts-area {
+        text-align: center;
+        margin-bottom: 50px;
+    }
+    .shortcuts-list {
+        display: inline-flex; /* 콘텐츠 크기만큼만 영역 차지 */
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 20px;
+        padding: 15px; /* 약간의 패딩만 남김 */
+        min-width: 100px; /* 최소 크기 설정 */
+        border-radius: 25px;
+        background-color: var(--card-bg);
+        box-shadow: 0 4px 8px var(--shadow-color);
+        transition: all 0.3s ease; /* 크기 변화 부드럽게 */
+    }
+    .shortcut-icon {
+        width: 50px;
+        height: 50px;
+        background-size: 32px 32px;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-color: rgba(255, 255, 255, 0.3);
+        border-radius: 20px;
+        transition: transform 0.2s, background-color 0.2s;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 1.5rem;
+    }
+    .shortcut-icon:hover {
+        transform: scale(1.1);
+        background-color: rgba(255, 255, 255, 0.5);
+    }
 
-/* 자동 완성 컨테이너 */
-#autocomplete-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    /* 검색창 높이만큼 아래로 이동 (12px + 12px 패딩 높이) */
-    transform: translateY(calc(12px + 12px + 1px)); 
-    z-index: 5;
-}
+    /* ToDo List */
+    #todo-list-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 300px;
+        background-color: var(--card-bg);
+        border-radius: 15px;
+        padding: 15px;
+        box-shadow: 0 10px 20px var(--shadow-color);
+        z-index: 5;
+        transition: right 0.3s;
+    }
 
-/* 자동 완성 결과 스타일 */
-#autocomplete-results {
-    width: 100%; /* 검색 버튼 너비 제외 */
-    max-height: 300px;
-    overflow-y: none;
-    background-color: rgba(255, 255, 255, 0.95);
-    border-radius: 0 0 10px 10px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    padding-top: 5px;
-    display: none; 
-}
+    #todo-list-container.hidden {
+        display: none;
+    }
 
-.autocomplete-item {
-    padding: 10px 20px;
-    cursor: pointer;
-    color: #333;
-    font-size: 1.1em;
-    text-align: left;
-    text-shadow: none;
-    white-space: nowrap; /* 자동 완성 항목이 줄바꿈되지 않도록 */
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
+    #todo-list {
+        list-style: none;
+        padding: 0;
+        margin: 10px 0;
+    }
+    #todo-list li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 0.95rem;
+    }
+    #todo-list li:last-child {
+        border-bottom: none;
+    }
+    #todo-list li.completed {
+        text-decoration: line-through;
+        opacity: 0.6;
+        color: #ccc;
+    }
+    #add-todo-form {
+        display: flex;
+        margin-top: 10px;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        padding-top: 10px;
+    }
+    #todo-input {
+        flex-grow: 1;
+        padding: 8px;
+        border-radius: 8px 0 0 8px;
+        border: none;
+        background-color: rgba(255, 255, 255, 0.2);
+        color: white;
+    }
+    #todo-input::placeholder {
+        color: rgba(255, 255, 255, 0.7);
+    }
+    #add-todo-form button {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 0 8px 8px 0;
+        transition: background-color 0.2s;
+    }
+    .flex-container-small {
+        /* flex */
+        display: flex;
+    
+        /* justify-between */
+        justify-content: space-between;
+    
+        /* items-center */
+        align-items: center;
+    
+        /* mt-2 */
+        margin-top: 0.5rem; /* 8px */
+    
+        /* text-sm */
+        font-size: 0.875rem; /* 14px */
+    }
 
-.autocomplete-item:hover,
-.autocomplete-item.active {
-    background-color: #eee;
-}
+    .flex-group {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem; 
+    }
 
+    .input-field-dark {
+        flex-grow: 1;
+        padding: 2%; 
+        border-radius: 25px;
+        background-color: #374151;
+        color: #ffffff;
+        border: none;
+        outline: none; 
+    }
+    
+    .input-field-dark::placeholder {
+        color: #9ca3af;
+        opacity: 1; 
+    }
 
-/* --- 오른쪽 하단 할 일 목록 컨테이너 --- */
-#todo-list-container {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background: rgba(255, 255, 255, 0.95);
-  color: #333;
-  padding: 20px;
-  border-radius: 10px;
-  width: 300px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-  display: none;
-}
+    .submit_btn {
+        background-color: #3b82f6;
+        color: #ffffff;
+        padding: 0.5rem;
+        border-radius: 25px;
+        transition: background-color 0.3s ease;
+    }
+    
+    /* 5. 마우스 오버 상태 (hover:bg-blue-600) */
+    .submit_btn:hover {
+        background-color: #2563eb;
+    }
 
-/* 헤더 정렬을 위한 flex 컨테이너 */
-#todo-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 10px;
-    margin-bottom: 15px; 
-}
+    .todo-btn-container button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1em;
+        margin-left: 5px;
+        transition: transform 0.2s;
+    }
+    .todo-btn-container button:hover {
+        transform: scale(1.1);
+    }
+    .complete-btn { color: #81C784; }
+    .delete-btn-icon { color: #E57373; }
 
-#todo-list-container h2 {
-    color: #4CAF50;
-    margin: 0;
-}
+    .scrollable-content {
+        max-height: 20vh;
+        overflow-y: auto; 
+        overflow-x: hidden; 
+    }
 
-/* 닫기 버튼 스타일 */
-#close-todo-btn {
-    background: none;
-    border: none;
-    color: #333;
-    font-size: 1.2em;
-    cursor: pointer;
-    font-weight: bold;
-    opacity: 0.6;
-    transition: opacity 0.2s, color 0.2s;
-}
+    /* Utility Buttons (Updated to Circular) */
+    #todo-toggle-btn, #settings-btn {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        background-color: var(--secondary-color);
+        color: white;
+        border: none;
+        width: 60px; /* Fixed width */
+        height: 60px; /* Fixed height */
+        padding: 0; /* Remove padding */
+        border-radius: 50%; /* Make it a circle */
+        cursor: pointer;
+        box-shadow: 0 4px 8px var(--shadow-color);
+        z-index: 10;
+        transition: transform 0.2s, background-color 0.3s;
+        display: flex; /* Use flexbox to center content */
+        justify-content: center;
+        align-items: center;
+        font-size: 1.5rem; /* Increase icon size */
+    }
 
-#close-todo-btn:hover {
-    opacity: 1;
-    color: #F44336; 
-}
+    #todo-toggle-btn:hover, #settings-btn:hover {
+        transform: scale(1.05);
+    }
 
-#add-todo-form { margin-bottom: 15px; display: flex; }
-#todo-input { flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 5px 0 0 5px; font-size: 1em; outline: none; color: #333; }
-#add-todo-button { padding: 8px 15px; border: none; border-radius: 0 5px 5px 0; background-color: #4CAF50; color: white; font-size: 1em; cursor: pointer; transition: background-color 0.3s; }
+    #settings-btn {
+        left: 100px; /* 20px margin + 60px button size + 20px margin = 100px */
+        background-color: #FFC107;
+    }
 
-#todo-list { list-style: none; padding: 0; text-align: left; max-height: 200px; overflow-y: auto;}
+    /* Settings Panel (위치 변경) */
+    #settings-panel {
+        position: fixed;
+        top: 20px; /* 왼쪽 상단에 배치 */
+        left: 20px;
+        width: 90%;
+        max-width: 450px; /* 모바일 대응을 위해 최대 폭을 줄임 */
+        background-color: #2c2c2c;
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        z-index: 20;
+        display: none; /* 초기에는 숨김 */
+        transform: translateX(-100%); /* 왼쪽 밖으로 숨김 */
+        transition: transform 0.3s ease-in-out;
+    }
 
-#todo-list li {
-    background: #f9f9f9;
-    padding: 10px;
-    margin-bottom: 8px;
-    border-radius: 5px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: none;
-    border-left: 5px solid #2196F3;
-    transition: opacity 0.3s; 
-    word-break: break-word; 
-}
+    #settings-panel.open {
+        display: block;
+        transform: translateX(0); /* 열릴 때 제자리로 */
+    }
 
-/* 완료된 할 일 스타일 */
-#todo-list li.completed {
-    text-decoration: line-through;
-    opacity: 0.5; 
-    border-left: 5px solid #4CAF50; 
-}
+    .settings-content {
+        /* 모달 컨테이너 역할 대신, 패널 내용 자체 */
+        position: relative;
+    }
+    #close-settings-btn {
+        position: absolute;
+        top: 0px;
+        right: 0px;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
+        opacity: 0.7;
+    }
+    #close-settings-btn:hover {
+        opacity: 1;
+    }
+    .setting-section {
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .setting-section:last-child {
+        border-bottom: none;
+    }
+    .setting-title {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #FFC107;
+        margin-bottom: 10px;
+    }
+    .setting-desc {
+        font-size: 0.9rem;
+        color: #aaa;
+        margin-bottom: 10px;
+    }
 
-/* 버튼 컨테이너 및 아이콘 버튼 스타일 */
-.todo-btn-container {
-    display: flex;
-    gap: 5px; 
-    flex-shrink: 0; 
-}
+    .accessible-url-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        overflow: none;
+    }
+    ::-webkit-scrollbar {
+        display: none;
+      }
+    .url-text {
+        flex-grow: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        padding-right: 10px;
+        font-size: 0.85rem;
+    }
+    .url-btn-container button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1em;
+        margin-left: 5px;
+        color: #FFC107;
+    }
 
-.complete-btn,
-.delete-btn-icon {
-    background: none;
-    border: none;
-    padding: 5px; 
-    cursor: pointer;
-    font-size: 1.2em;
-    line-height: 1;
-    transition: transform 0.2s;
-}
+    /* Toggle Switch Styling */
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 34px;
+    }
 
-.complete-btn:hover,
-.delete-btn-icon:hover {
-    transform: scale(1.1);
-}
+    .switch input { 
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
 
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 34px;
+    }
 
-/* --- 하단 고정 버튼 스타일 --- */
-#footer-buttons {
-    position: fixed; 
-    bottom: 20px; 
-    left: 20px; 
-    display: flex;
-    align-items: center;
-    z-index: 100;
-}
-#footer-buttons button {
-    width: 50px; 
-    height: 50px;
-    border-radius: 50%; 
-    border: none;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-    cursor: pointer;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 1.5em; 
-    transition: transform 0.2s, opacity 0.2s;
-}
-#settings-btn {
-    margin-right: 15px; 
-    background-color: rgba(158, 158, 158, 0.7); 
-    color: white;
-}
-#todo-toggle-btn {
-    background-color: rgba(76, 175, 80, 0.8); 
-    color: white;
-}
-#footer-buttons button:hover {
-    transform: scale(1.1);
-    opacity: 0.9;
-}
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 26px;
+        width: 26px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
 
-/* --- 설정 패널 스타일 --- */
-#settings-panel {
-    position: fixed;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 350px;
-    padding: 20px;
-    background: rgba(33, 33, 33, 0.95);
-    color: white;
-    border-radius: 10px 10px 0 0;
-    box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.5);
-    z-index: 200;
-    display: none;
-}
+    input:checked + .slider {
+        background-color: var(--focus-mode-color);
+    }
 
-#settings-panel h3 {
-    margin-top: 0;
-    border-bottom: 1px solid #444;
-    padding-bottom: 10px;
-}
+    input:focus + .slider {
+        box-shadow: 0 0 1px var(--focus-mode-color);
+    }
 
-#background-url-input {
-    width: calc(100% - 20px);
-    padding: 10px;
-    margin-bottom: 15px;
-    border: none;
-    border-radius: 5px;
-    background: #555;
-    color: white;
-}
+    input:checked + .slider:before {
+        transform: translateX(26px);
+    }
 
-#settings-panel button {
-    padding: 10px 15px;
-    margin-right: 10px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    background-color: #03A9F4;
-    color: white;
-}
+    .setting-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
 
-#close-settings-btn {
-    background-color: #F44336;
-}
+    .setting-time-input {
+        background-color: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 5px;
+        border-radius: 5px;
+
+    }
+
+    /* 모바일 최적화: 설정 패널 */
+    @media (max-width: 640px) {
+        #settings-panel {
+            top: 10%;
+            left: 0;
+            max-width: 100%;
+            height: 100%;
+            border-radius: 0;
+            overflow-y: auto;
+        }
+        .settings-content {
+            padding: 10px;
+        }
+        #close-settings-btn {
+            font-size: 2rem;
+            top: 15px;
+            right: 15px;
+        }
+    }

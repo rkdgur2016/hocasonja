@@ -1,10 +1,13 @@
 // --- 전역 상수 및 키 ---
 const TODO_STORAGE_KEY = 'customNewTabTodos';
 const GOAL_STORAGE_KEY = 'customNewTabGoal';
-const BACKGROUND_STORAGE_KEY = 'customNewTabBackgroundUrl'; 
+const ACCESSIBLE_URLS_KEY = 'customNewTabAccessibleUrls'; 
+const LAST_RESET_DATE_KEY = 'todoLastResetDate';
+const FOCUS_MODE_KEY = 'isFocusModeOn';
+const FOCUS_START_TIME_KEY = 'focusStartTime';
+const FOCUS_END_TIME_KEY = 'focusEndTime';
 
-
-// --- 시간 및 날짜 기능 ---
+// --- 시간 및 날짜 기능 (수정됨: 집중 모드 스케줄링 추가) ---
 function updateTime() {
     const now = new Date();
     
@@ -18,15 +21,145 @@ function updateTime() {
     const hours = now.getHours().toString().padStart(2, '0');
     const minutes = now.getMinutes().toString().padStart(2, '0');
     const seconds = now.getSeconds().toString().padStart(2, '0');
-    
+    const currentTimeStr = `${hours}:${minutes}`;
+
     document.getElementById('time').textContent = `${hours}:${minutes}:${seconds}`;
+
+    if (hours === '00' && minutes === '00' && seconds === '00') {
+        checkAndResetTodos(dateText);
+    }
+    checkFocusModeSchedule(currentTimeStr);
 }
+
+function parseTime(timeStr) {
+    if (!timeStr) return -1;
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+}
+
+function isTimeBetween(startTimeStr, endTimeStr, currentTimeStr) {
+    const start = parseTime(startTimeStr);
+    const end = parseTime(endTimeStr);
+    const current = parseTime(currentTimeStr);
+    
+    // 유효성 검사
+    if (start === -1 || end === -1) return false; 
+    
+    if (start === end) return false;
+
+    if (start < end) {
+        return current >= start && current < end; 
+    } else {
+        return current >= start || current < end;
+    }
+}
+
+function checkFocusModeSchedule(currentTimeStr) {
+    const start = localStorage.getItem(FOCUS_START_TIME_KEY);
+    const end = localStorage.getItem(FOCUS_END_TIME_KEY);
+    const toggle = document.getElementById('focus-mode-toggle');
+    
+    if (!toggle) return;
+
+    // 1. 수동 모드 우선: 토글이 켜져 있으면 수동 상태를 유지합니다.
+    if (toggle.checked && localStorage.getItem(FOCUS_MODE_KEY) === 'on') {
+         setFocusModeState(true, true);
+         return;
+    }
+    
+    // 2. 스케줄 확인
+    if (start && end) {
+        const isActive = isTimeBetween(start, end, currentTimeStr);
+        
+        // 스케줄에 의해 강제로 상태를 덮어씁니다.
+        if (isActive) {
+             setFocusModeState(true, false); 
+        } else {
+             // 비활성화 시간이 되면 수동 토글 상태와 상관없이 'off'로 설정합니다.
+             setFocusModeState(false, false); 
+        }
+    } else {
+        // 스케줄이 설정되지 않은 경우, 수동 토글 상태만 따릅니다.
+        setFocusModeState(toggle.checked, true);
+    }
+}
+
+function setFocusModeState(state, isManual) {
+    const body = document.body;
+    const indicator = document.querySelector('.focus-mode-indicator');
+    const toggle = document.getElementById('focus-mode-toggle');
+    
+    // 상태를 localStorage에 저장
+    localStorage.setItem(FOCUS_MODE_KEY, state ? 'on' : 'off');
+    
+    if (state) {
+        body.classList.add('focus-mode');
+        indicator.style.display = 'block';
+    } else {
+        body.classList.remove('focus-mode');
+        indicator.style.display = 'none';
+    }
+    
+    // 토글 UI 업데이트
+    if (toggle && isManual) {
+        toggle.checked = state;
+    }
+}
+
+// --- To-Do List 리셋 로직 ---
+function checkAndResetTodos(currentDate) {
+    const lastResetDate = localStorage.getItem(LAST_RESET_DATE_KEY);
+
+    if (lastResetDate !== currentDate) {
+        localStorage.removeItem(TODO_STORAGE_KEY);
+        localStorage.setItem(LAST_RESET_DATE_KEY, currentDate);
+        loadTodos();
+        console.log(`To-Do List가 ${currentDate} 자정 기준으로 리셋되었습니다.`);
+    }
+}
+
 setInterval(updateTime, 1000);
 updateTime();
 
+// --- 설정 로드 및 저장 ---
+function loadSettings() {
+    // 1. Focus Mode Settings
+    const isFocusOn = localStorage.getItem(FOCUS_MODE_KEY) === 'on';
+    const startTime = localStorage.getItem(FOCUS_START_TIME_KEY) || '09:00';
+    const endTime = localStorage.getItem(FOCUS_END_TIME_KEY) || '17:00';
+    
+    const toggle = document.getElementById('focus-mode-toggle');
+    const startInput = document.getElementById('focus-start-time');
+    const endInput = document.getElementById('focus-end-time');
+
+    if (toggle) toggle.checked = isFocusOn;
+    if (startInput) startInput.value = startTime;
+    if (endInput) endInput.value = endTime;
+
+    // UI 초기 상태 반영
+    setFocusModeState(isFocusOn, true);
+}
+
+function saveFocusSettings() {
+    const toggle = document.getElementById('focus-mode-toggle');
+    const startInput = document.getElementById('focus-start-time');
+    const endInput = document.getElementById('focus-end-time');
+    
+    if (!toggle || !startInput || !endInput) return;
+
+    // 수동 토글 상태 저장
+    const isManualOn = toggle.checked;
+    localStorage.setItem(FOCUS_MODE_KEY, isManualOn ? 'on' : 'off');
+    
+    // 시간 저장
+    localStorage.setItem(FOCUS_START_TIME_KEY, startInput.value);
+    localStorage.setItem(FOCUS_END_TIME_KEY, endInput.value);
+    
+    // 상태 즉시 적용
+    setFocusModeState(isManualOn, true);
+}
 
 // --- Helper Functions ---
-// 디바운스 함수 (입력 속도가 빨라도 API 호출 빈도를 낮춤)
 function debounce(func, delay) {
     let timeout;
     return function() {
@@ -45,12 +178,10 @@ function setupSearch() {
     const autocompleteResults = document.getElementById('autocomplete-results');
     
     const SUGGEST_URL = 'https://suggestqueries.google.com/complete/search?client=chrome&q=';
-    
     let currentFocus = -1; 
     
     searchInput.focus(); 
 
-    // --- 1. 자동 완성 API 호출 로직 ---
     searchInput.addEventListener('input', debounce(async function() {
         const query = searchInput.value.trim();
         if (query.length < 1) {
@@ -75,8 +206,6 @@ function setupSearch() {
         }
     }, 200)); 
     
-    
-    // --- 2. 목록 표시 및 항목 클릭 처리 ---
     function displayAutocomplete(suggestions) {
         autocompleteResults.innerHTML = '';
         currentFocus = -1;
@@ -108,7 +237,6 @@ function setupSearch() {
         currentFocus = -1;
     }
     
-    // --- 3. 키보드 네비게이션 (방향키, Enter) ---
     searchInput.addEventListener('keydown', function(e) {
         let items = autocompleteResults.querySelectorAll('.autocomplete-item');
         
@@ -124,21 +252,22 @@ function setupSearch() {
             setActive(items);
         } else if (e.key === 'Enter') { 
             if (currentFocus > -1) {
+                // Enter key pressed while an item is highlighted
                 e.preventDefault();
                 items[currentFocus].click(); 
             } else {
+                // Regular form submit
                 searchForm.submit(); 
             }
         }
     });
 
-    // --- 4. 검색 폼 제출 (기존 로직 유지) ---
     searchForm.addEventListener('submit', function(event) {
         event.preventDefault(); 
         let query = searchInput.value.trim();
         if (query === "") return; 
 
-        // URL 형식 검사 및 이동
+        // Check if the query is a URL
         const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/i;
         if (urlRegex.test(query)) {
             if (!query.startsWith('http://') && !query.startsWith('https://')) {
@@ -146,18 +275,17 @@ function setupSearch() {
             }
             window.location.href = query;
         } else {
+            // It's a search term, submit the form normally
             this.submit(); 
         }
     });
     
-    // 포커스 아웃 시 자동 완성 숨기기
     document.addEventListener('click', function(e) {
         if (e.target.id !== 'search-input' && !e.target.classList.contains('autocomplete-item')) {
             hideAutocomplete();
         }
     });
     
-    // --- Helper Functions for Autocomplete ---
     function setActive(items) {
         items.forEach(item => item.classList.remove('active'));
         if (currentFocus > -1 && currentFocus < items.length) {
@@ -168,22 +296,24 @@ function setupSearch() {
 }
 
 
-// --- 목표 문구 기능 (수정 없음) ---
+// --- 목표 문구 기능 ---
 function loadGoal() {
     const goalTextElement = document.getElementById('goal-text');
     const savedGoal = localStorage.getItem(GOAL_STORAGE_KEY);
     
     if (savedGoal) {
         goalTextElement.textContent = savedGoal;
-    } 
+    } else {
+         goalTextElement.textContent = "🔥 오늘 당신의 목표 문구를 입력하세요. 🔥";
+    }
 
     goalTextElement.addEventListener('click', () => {
         const currentText = goalTextElement.textContent;
         const input = document.createElement('input');
         
         input.type = 'text';
-        input.value = currentText;
-        input.id = 'goal-input-editor'; // ⭐️ CSS가 이 ID를 사용하여 스타일을 확대 적용합니다. ⭐️
+        input.value = (currentText === "🔥 오늘 당신의 목표 문구를 입력하세요. 🔥") ? "" : currentText;
+        input.id = 'goal-input-editor';
         
         goalTextElement.parentNode.replaceChild(input, goalTextElement);
         input.focus();
@@ -206,37 +336,172 @@ function loadGoal() {
 }
 
 
-// --- 배경 이미지 설정 기능 ---
-function applyBackground(url) {
-    if (url) {
-        document.documentElement.style.setProperty('--bg-image', `url("${url}")`);
-        localStorage.setItem(BACKGROUND_STORAGE_KEY, url);
-    } else {
-        document.documentElement.style.removeProperty('--bg-image');
-        localStorage.removeItem(BACKGROUND_STORAGE_KEY);
+// --- 사용자 정의 바로가기 렌더링 함수 ---
+function renderUserShortcuts() {
+    let urls = JSON.parse(localStorage.getItem(ACCESSIBLE_URLS_KEY) || '[]');
+    const userShortcutsList = document.getElementById('user-shortcuts-list');
+    userShortcutsList.innerHTML = ''; 
+
+    urls.forEach((url) => {
+        const a = document.createElement('a');
+        a.href = url;
+        a.classList.add('shortcut-icon', 'user-shortcut-icon');
+        a.target = "_self"; // 현재 탭에서 열기
+        
+        try {
+            const domain = new URL(url).hostname;
+            a.title = domain;
+            
+            // Google Favicon API를 사용하여 파비콘을 배경 이미지로 설정
+            a.style.backgroundImage = `url("https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(url)}")`;
+            
+        } catch (e) {
+            a.title = url;
+            a.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+            a.innerHTML = '🔗';
+        }
+
+        userShortcutsList.appendChild(a);
+    });
+}
+
+
+// --- 접근 가능 URL 기능 ---
+function updateAccessibleUrl(oldUrl, newUrl) {
+    let urls = JSON.parse(localStorage.getItem(ACCESSIBLE_URLS_KEY) || '[]');
+    
+    // http/https 접두사 보장
+    if (!newUrl.startsWith('http://') && !newUrl.startsWith('https://')) {
+        newUrl = 'https://' + newUrl;
+    }
+    
+    if (newUrl === oldUrl) return; 
+
+    if (urls.includes(newUrl)) {
+        // 커스텀 알림/모달로 대체 권장
+        alert("이미 등록된 URL입니다.");
+        return;
+    }
+
+    const index = urls.indexOf(oldUrl);
+    if (index !== -1) {
+        urls[index] = newUrl;
+        localStorage.setItem(ACCESSIBLE_URLS_KEY, JSON.stringify(urls));
+        loadAccessibleUrls();
+        renderUserShortcuts();
     }
 }
 
-function loadBackground() {
-    const savedUrl = localStorage.getItem(BACKGROUND_STORAGE_KEY);
-    if (savedUrl) {
-        applyBackground(savedUrl);
+
+function loadAccessibleUrls() {
+    let urls = JSON.parse(localStorage.getItem(ACCESSIBLE_URLS_KEY) || '[]');
+    const listContainer = document.getElementById('accessible-urls-list');
+    listContainer.innerHTML = ''; 
+
+    if (urls.length === 0) {
+        listContainer.innerHTML = '<p class="setting-desc" style="color:#aaa;">등록된 웹사이트가 없습니다.</p>';
+        return;
     }
+
+    urls.forEach((urlItem) => {
+        const item = document.createElement('div');
+        item.classList.add('accessible-url-item');
+        
+        const urlText = document.createElement('span');
+        urlText.classList.add('url-text');
+        urlText.textContent = urlItem;
+        
+        const btnContainer = document.createElement('div');
+        btnContainer.classList.add('url-btn-container');
+
+        const editBtn = document.createElement('button');
+        editBtn.classList.add('edit-url-btn');
+        editBtn.innerHTML = '🔄'; 
+        editBtn.title = '수정';
+        editBtn.addEventListener('click', () => {
+            const currentUrl = urlText.textContent;
+            const input = document.createElement('input');
+            input.type = 'url';
+            input.value = currentUrl;
+            input.classList.add('url-input-editor'); 
+            input.style.width = '100%';
+            input.style.textShadow = 'none';
+            input.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+            input.style.border = '1px solid #FFC107';
+            input.style.color = 'white';
+            input.style.padding = '5px';
+            input.style.borderRadius = '3px';
+            input.style.boxSizing = 'border-box';
+
+
+            urlText.parentNode.replaceChild(input, urlText);
+            input.focus();
+
+            const saveUrl = () => {
+                const newUrl = input.value.trim();
+                if (newUrl) {
+                    updateAccessibleUrl(currentUrl, newUrl);
+                } else {
+                    // Empty input or escape (blur) without change: restore original text span
+                    input.parentNode.replaceChild(urlText, input);
+                    urlText.textContent = currentUrl; 
+                }
+            };
+
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    saveUrl();
+                    input.blur(); // Blur triggers saveUrl too, but this handles Enter press cleanly
+                }
+            });
+            input.addEventListener('blur', saveUrl);
+        });
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.classList.add('url-delete-btn');
+        deleteBtn.innerHTML = '❌';
+        deleteBtn.title = '삭제';
+        deleteBtn.addEventListener('click', () => deleteAccessibleUrl(urlItem));
+
+        btnContainer.appendChild(editBtn); 
+        btnContainer.appendChild(deleteBtn);
+
+        item.appendChild(urlText);
+        item.appendChild(btnContainer); 
+        listContainer.appendChild(item);
+    });
+}
+
+function addAccessibleUrl(newUrl) {
+    let urls = JSON.parse(localStorage.getItem(ACCESSIBLE_URLS_KEY) || '[]');
+    
+    if (!newUrl.startsWith('http://') && !newUrl.startsWith('https://')) {
+        newUrl = 'https://' + newUrl;
+    }
+    
+    if (urls.includes(newUrl)) {
+        alert("이미 등록된 URL입니다.");
+        return;
+    }
+
+    urls.push(newUrl);
+    localStorage.setItem(ACCESSIBLE_URLS_KEY, JSON.stringify(urls));
+    loadAccessibleUrls();
+    renderUserShortcuts(); 
+}
+
+function deleteAccessibleUrl(urlToDelete) {
+    let urls = JSON.parse(localStorage.getItem(ACCESSIBLE_URLS_KEY) || '[]');
+    urls = urls.filter(url => url !== urlToDelete);
+    localStorage.setItem(ACCESSIBLE_URLS_KEY, JSON.stringify(urls));
+    loadAccessibleUrls();
+    renderUserShortcuts(); 
 }
 
 
 // --- 할 일 목록 기능 ---
-
 function loadTodos() {
     let todos = JSON.parse(localStorage.getItem(TODO_STORAGE_KEY) || '[]');
-    
-    const todoContainer = document.getElementById('todo-list-container');
-    
-    if (todos.length > 0) {
-        todoContainer.style.display = 'block'; 
-    } else {
-        todoContainer.style.display = 'none';
-    }
     
     todos.sort((a, b) => a.completed - b.completed); 
 
@@ -303,26 +568,37 @@ function deleteTodo(todoText) {
 
 // --- 페이지 로드 시 실행 및 버튼 기능 ---
 document.addEventListener('DOMContentLoaded', () => {
-    loadBackground(); 
     setupSearch(); 
     loadGoal(); 
     loadTodos(); 
+    renderUserShortcuts(); 
+    loadSettings(); 
+    
+    // 페이지 로드 시 현재 날짜를 확인하여 혹시 지나쳤을 자정 리셋을 처리
+    const now = new Date();
+    const dateText = `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일`;
+    checkAndResetTodos(dateText);
 
     const addTodoForm = document.getElementById('add-todo-form');
     const todoInput = document.getElementById('todo-input');
     
     const todoContainer = document.getElementById('todo-list-container');
-    const closeTodoBtn = document.getElementById('close-todo-btn');
     const todoToggleButton = document.getElementById('todo-toggle-btn');
     
     const settingsPanel = document.getElementById('settings-panel');
     const settingsButton = document.getElementById('settings-btn');
     const closeSettingsButton = document.getElementById('close-settings-btn');
-    const backgroundUrlInput = document.getElementById('background-url-input');
-    const saveBackgroundButton = document.getElementById('save-background-btn');
+    
+    const addUrlForm = document.getElementById('add-url-form'); 
+    const urlInput = document.getElementById('url-input');
+    
+    const focusToggle = document.getElementById('focus-mode-toggle');
+    const focusStart = document.getElementById('focus-start-time');
+    const focusEnd = document.getElementById('focus-end-time');
 
+    // --- 이벤트 리스너 ---
 
-    // 할 일 추가 폼 제출 이벤트
+    // ToDo
     addTodoForm.addEventListener('submit', function(event) {
         event.preventDefault(); 
         const todoText = todoInput.value.trim();
@@ -332,39 +608,50 @@ document.addEventListener('DOMContentLoaded', () => {
             todoInput.value = ''; 
         }
     });
-    
-    // 할 일 목록 닫기 버튼 기능
-    closeTodoBtn.addEventListener('click', () => {
-        todoContainer.style.display = 'none';
+
+    // URL
+    addUrlForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const newUrl = urlInput.value.trim();
+        if (newUrl) {
+            addAccessibleUrl(newUrl);
+            urlInput.value = '';
+        }
     });
     
-    // 할 일 토글 버튼 기능
+    // ToDo Toggle
     todoToggleButton.addEventListener('click', () => {
         const isHidden = window.getComputedStyle(todoContainer).display === 'none';
         todoContainer.style.display = isHidden ? 'block' : 'none'; 
     });
     
-    // 설정 버튼 클릭 시: 패널 보이기
+    // Settings Panel Toggle
     settingsButton.addEventListener('click', () => {
-        backgroundUrlInput.value = localStorage.getItem(BACKGROUND_STORAGE_KEY) || '';
-        settingsPanel.style.display = 'block';
-    });
-
-    // 설정 패널 닫기 버튼
-    closeSettingsButton.addEventListener('click', () => {
-        settingsPanel.style.display = 'none';
-    });
-    
-    // 배경 적용 버튼 클릭 시
-    saveBackgroundButton.addEventListener('click', () => {
-        const url = backgroundUrlInput.value.trim();
-        if (url) {
-            applyBackground(url);
-            settingsPanel.style.display = 'none';
+        const isOpen = settingsPanel.classList.contains('open');
+        
+        if (!isOpen) {
+            loadAccessibleUrls(); 
+            settingsPanel.style.display = 'block'; // 먼저 보이게 설정
+            // 다음 틱에 transform 적용
+            setTimeout(() => settingsPanel.classList.add('open'), 10); 
+            loadSettings(); 
         } else {
-            applyBackground(null);
-            settingsPanel.style.display = 'none';
-            alert("배경이 기본 이미지로 초기화되었습니다.");
+            settingsPanel.classList.remove('open');
+            // 애니메이션 완료 후 display: none 처리
+            setTimeout(() => settingsPanel.style.display = 'none', 300); 
         }
     });
+
+    // Settings Panel Close
+    closeSettingsButton.addEventListener('click', () => {
+        settingsPanel.classList.remove('open');
+        setTimeout(() => settingsPanel.style.display = 'none', 300);
+    });
+    
+    // Focus Mode 이벤트 리스너: 설정 변경 시 저장
+    if (focusToggle) {
+        focusToggle.addEventListener('change', saveFocusSettings);
+        focusStart.addEventListener('change', saveFocusSettings);
+        focusEnd.addEventListener('change', saveFocusSettings);
+    }
 });
