@@ -6,6 +6,9 @@ const LAST_RESET_DATE_KEY = 'todoLastResetDate';
 const FOCUS_MODE_KEY = 'isFocusModeOn';
 const FOCUS_START_TIME_KEY = 'focusStartTime';
 const FOCUS_END_TIME_KEY = 'focusEndTime';
+const FOCUS_SCHEDULE_TOGGLE_KEY = 'isFocusScheduleOn'; 
+const MAX_URLS = 10; // 💡 최대 URL 개수 제한
+const MAX_TODOS = 10; // 💡 최대 할 일 개수 제한
 
 // --- 시간 및 날짜 기능 (수정됨: 집중 모드 스케줄링 추가) ---
 function updateTime() {
@@ -28,7 +31,8 @@ function updateTime() {
     if (hours === '00' && minutes === '00' && seconds === '00') {
         checkAndResetTodos(dateText);
     }
-    checkFocusModeSchedule(currentTimeStr);
+    // 매 초마다 스케줄 검사
+    checkFocusModeSchedule(currentTimeStr); 
 }
 
 function parseTime(timeStr) {
@@ -42,52 +46,65 @@ function isTimeBetween(startTimeStr, endTimeStr, currentTimeStr) {
     const end = parseTime(endTimeStr);
     const current = parseTime(currentTimeStr);
     
-    // 유효성 검사
-    if (start === -1 || end === -1) return false; 
+    if (start === -1 || end === -1 || start === end) return false; 
     
-    if (start === end) return false;
-
     if (start < end) {
         return current >= start && current < end; 
     } else {
+        // 자정을 넘어가는 경우 (예: 23:00 시작, 02:00 종료)
         return current >= start || current < end;
     }
 }
 
+/**
+ * 집중 모드 스케줄을 확인하고 상태를 업데이트합니다.
+ * 스케줄이 활성화되어 있으면 수동 토글을 덮어씁니다.
+ */
 function checkFocusModeSchedule(currentTimeStr) {
-    const start = localStorage.getItem(FOCUS_START_TIME_KEY);
-    const end = localStorage.getItem(FOCUS_END_TIME_KEY);
-    const toggle = document.getElementById('focus-mode-toggle');
-    
-    if (!toggle) return;
+    const manualToggle = document.getElementById('focus-mode-toggle');
+    // 로컬 스토리지에서 상태를 읽어옵니다. (loadSettings에서 UI는 동기화됨)
+    const isScheduleEnabled = localStorage.getItem(FOCUS_SCHEDULE_TOGGLE_KEY) === 'on'; 
+    const isFocusModeOn = localStorage.getItem(FOCUS_MODE_KEY) === 'on';
 
-    // 1. 수동 모드 우선: 토글이 켜져 있으면 수동 상태를 유지합니다.
-    if (toggle.checked && localStorage.getItem(FOCUS_MODE_KEY) === 'on') {
-         setFocusModeState(true, true);
-         return;
-    }
-    
-    // 2. 스케줄 확인
-    if (start && end) {
-        const isActive = isTimeBetween(start, end, currentTimeStr);
+    if (!manualToggle) return;
+
+    if (isScheduleEnabled) {
+        // --- 1. 자동 스케줄 모드 (Schedule ON) ---
+        const start = localStorage.getItem(FOCUS_START_TIME_KEY);
+        const end = localStorage.getItem(FOCUS_END_TIME_KEY);
         
-        // 스케줄에 의해 강제로 상태를 덮어씁니다.
-        if (isActive) {
-             setFocusModeState(true, false); 
-        } else {
-             // 비활성화 시간이 되면 수동 토글 상태와 상관없이 'off'로 설정합니다.
-             setFocusModeState(false, false); 
+        if (start && end) {
+            const isActiveTime = isTimeBetween(start, end, currentTimeStr);
+            
+            // 현재 시간이 스케줄 구간이면 ON으로 설정 (수동 토글 무시)
+            if (isActiveTime) {
+                if (!isFocusModeOn) {
+                    setFocusModeState(true, false); // 스케줄에 의한 ON
+                }
+            } else {
+                // 현재 시간이 스케줄 구간이 아니면 OFF로 설정 (수동 토글 무시)
+                if (isFocusModeOn) {
+                    setFocusModeState(false, false); // 스케줄에 의한 OFF
+                }
+            }
         }
     } else {
-        // 스케줄이 설정되지 않은 경우, 수동 토글 상태만 따릅니다.
-        setFocusModeState(toggle.checked, true);
+        // --- 2. 수동 모드 (Schedule OFF) ---
+        // 수동 토글 상태를 유지/반영합니다.
+        // setFocusModeState(manualToggle.checked, true); // updateTime에서는 중복 방지
     }
 }
 
-function setFocusModeState(state, isManual) {
+
+/**
+ * 집중 모드 상태를 설정하고 UI를 업데이트합니다.
+ * @param {boolean} state - ON/OFF 상태 (true: ON, false: OFF)
+ * @param {boolean} updateManualToggle - 수동 토글 UI도 업데이트할지 여부 (스케줄 자동 작동 시 false)
+ */
+function setFocusModeState(state, updateManualToggle) {
     const body = document.body;
     const indicator = document.querySelector('.focus-mode-indicator');
-    const toggle = document.getElementById('focus-mode-toggle');
+    const manualToggle = document.getElementById('focus-mode-toggle');
     
     // 상태를 localStorage에 저장
     localStorage.setItem(FOCUS_MODE_KEY, state ? 'on' : 'off');
@@ -100,9 +117,9 @@ function setFocusModeState(state, isManual) {
         indicator.style.display = 'none';
     }
     
-    // 토글 UI 업데이트
-    if (toggle && isManual) {
-        toggle.checked = state;
+    // 수동 토글 UI 업데이트: 
+    if (manualToggle && updateManualToggle) {
+        manualToggle.checked = state;
     }
 }
 
@@ -121,42 +138,77 @@ function checkAndResetTodos(currentDate) {
 setInterval(updateTime, 1000);
 updateTime();
 
+// 💡 스케줄 시간 입력 컨트롤의 상태를 업데이트합니다.
+function updateTimeControlsState() {
+    const scheduleToggle = document.getElementById('focus-schedule-toggle');
+    const timeControls = document.getElementById('focus-time-controls');
+    
+    if (!scheduleToggle || !timeControls) return;
+
+    if (scheduleToggle.checked) {
+        timeControls.classList.remove('disabled-controls');
+    } else {
+        timeControls.classList.add('disabled-controls');
+    }
+}
+
 // --- 설정 로드 및 저장 ---
 function loadSettings() {
     // 1. Focus Mode Settings
-    const isFocusOn = localStorage.getItem(FOCUS_MODE_KEY) === 'on';
+    // 저장된 실제 집중 모드 상태를 가져옵니다.
+    const isFocusOn = localStorage.getItem(FOCUS_MODE_KEY) === 'on'; 
+    const isScheduleOn = localStorage.getItem(FOCUS_SCHEDULE_TOGGLE_KEY) === 'on'; 
     const startTime = localStorage.getItem(FOCUS_START_TIME_KEY) || '09:00';
     const endTime = localStorage.getItem(FOCUS_END_TIME_KEY) || '17:00';
     
-    const toggle = document.getElementById('focus-mode-toggle');
+    const manualToggle = document.getElementById('focus-mode-toggle');
+    const scheduleToggle = document.getElementById('focus-schedule-toggle'); 
     const startInput = document.getElementById('focus-start-time');
     const endInput = document.getElementById('focus-end-time');
 
-    if (toggle) toggle.checked = isFocusOn;
+    // 초기 로드 시 로컬 상태 반영
+    if (manualToggle) manualToggle.checked = isFocusOn; 
+    if (scheduleToggle) scheduleToggle.checked = isScheduleOn; 
     if (startInput) startInput.value = startTime;
     if (endInput) endInput.value = endTime;
 
     // UI 초기 상태 반영
-    setFocusModeState(isFocusOn, true);
+    setFocusModeState(isFocusOn, true); 
+    
+    updateTimeControlsState(); 
 }
 
 function saveFocusSettings() {
-    const toggle = document.getElementById('focus-mode-toggle');
+    const manualToggle = document.getElementById('focus-mode-toggle');
+    const scheduleToggle = document.getElementById('focus-schedule-toggle'); 
     const startInput = document.getElementById('focus-start-time');
     const endInput = document.getElementById('focus-end-time');
     
-    if (!toggle || !startInput || !endInput) return;
+    if (!manualToggle || !scheduleToggle || !startInput || !endInput) return; 
 
-    // 수동 토글 상태 저장
-    const isManualOn = toggle.checked;
-    localStorage.setItem(FOCUS_MODE_KEY, isManualOn ? 'on' : 'off');
+    const isManualOn = manualToggle.checked;
+    const isScheduleOn = scheduleToggle.checked;
     
-    // 시간 저장
+    localStorage.setItem(FOCUS_SCHEDULE_TOGGLE_KEY, isScheduleOn ? 'on' : 'off');
     localStorage.setItem(FOCUS_START_TIME_KEY, startInput.value);
     localStorage.setItem(FOCUS_END_TIME_KEY, endInput.value);
     
-    // 상태 즉시 적용
-    setFocusModeState(isManualOn, true);
+    if (!isScheduleOn) {
+        // 스케줄이 꺼져 있다면, 수동 토글의 상태를 최종 상태로 저장하고 즉시 적용합니다.
+        localStorage.setItem(FOCUS_MODE_KEY, isManualOn ? 'on' : 'off');
+        setFocusModeState(isManualOn, true); 
+    } else {
+        // 스케줄이 켜져 있다면, 수동 토글의 상태만 저장하고, 실제 상태는 스케줄에 맡깁니다.
+        localStorage.setItem(FOCUS_MODE_KEY, isManualOn ? 'on' : 'off');
+        
+        // 스케줄 ON일 때 saveFocusSettings가 호출되면, 즉시 스케줄 검사를 다시 수행하여 반영
+        const now = new Date();
+        const hours = now.getHours().toString().padStart(2, '0');
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        checkFocusModeSchedule(`${hours}:${minutes}`);
+    }
+
+    updateTimeControlsState(); 
 }
 
 // --- Helper Functions ---
@@ -169,6 +221,63 @@ function debounce(func, delay) {
         timeout = setTimeout(() => func.apply(context, args), delay);
     };
 }
+
+
+// --- URL 차단 기능 (Focus Blocker) 추가 ---
+let blockedTargetUrl = ''; // 차단된 URL을 임시 저장하는 전역 변수
+
+// Helper function to get a clean hostname for comparison
+function getHostname(url) {
+    try {
+        // Ensure the URL has a protocol for the URL object to parse it
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            url = 'https://' + url;
+        }
+        return new URL(url).hostname.replace(/^www\./, '');
+    } catch (e) {
+        return null; 
+    }
+}
+
+// Check if the given URL is in the allowlist
+function isUrlAllowed(targetUrl) {
+    const isFocusOn = localStorage.getItem(FOCUS_MODE_KEY) === 'on';
+    if (!isFocusOn) {
+        return true; // Focus Mode is off, allow everything
+    }
+
+    let allowedUrls = JSON.parse(localStorage.getItem(ACCESSIBLE_URLS_KEY) || '[]');
+    
+    // 1. Check for exact match (full URL as stored)
+    if (allowedUrls.includes(targetUrl)) {
+        return true;
+    }
+
+    // 2. Check for domain match (more robust)
+    const targetHostname = getHostname(targetUrl);
+    
+    // Check if any of the allowed URLs have the same hostname
+    const isHostnameAllowed = allowedUrls.some(allowedUrl => {
+        const allowedHostname = getHostname(allowedUrl);
+        return allowedHostname && targetHostname === allowedHostname;
+    });
+
+    return isHostnameAllowed;
+}
+
+// Function to handle the blocking UI
+function showBlocker(url) {
+    blockedTargetUrl = url;
+    document.getElementById('blocked-url-display').textContent = url;
+    document.getElementById('focus-blocker-overlay').style.display = 'flex';
+}
+
+function hideBlocker() {
+    blockedTargetUrl = '';
+    document.getElementById('focus-blocker-overlay').style.display = 'none';
+    document.getElementById('search-input').value = ''; // 검색 필드 초기화
+}
+// --- END URL 차단 기능 추가 ---
 
 
 // --- 검색 기능 (자동 완성 포함) ---
@@ -222,7 +331,8 @@ function setupSearch() {
             
             item.addEventListener('click', function() {
                 searchInput.value = suggestion;
-                searchForm.submit();
+                // 바로 submit 대신, submit 이벤트 핸들러를 실행하여 URL 검사 로직을 타도록 함
+                searchForm.dispatchEvent(new Event('submit', { cancelable: true })); 
                 hideAutocomplete();
             });
             autocompleteResults.appendChild(item);
@@ -257,7 +367,8 @@ function setupSearch() {
                 items[currentFocus].click(); 
             } else {
                 // Regular form submit
-                searchForm.submit(); 
+                // Enter key press should trigger the submit event to hit the handler below
+                searchForm.dispatchEvent(new Event('submit', { cancelable: true }));
             }
         }
     });
@@ -270,10 +381,20 @@ function setupSearch() {
         // Check if the query is a URL
         const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/i;
         if (urlRegex.test(query)) {
-            if (!query.startsWith('http://') && !query.startsWith('https://')) {
-                query = 'http://' + query;
+            let targetUrl = query;
+            if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+                targetUrl = 'https://' + targetUrl;
             }
-            window.location.href = query;
+            
+            // 💡 집중 모드 URL 차단 로직 추가
+            if (!isUrlAllowed(targetUrl)) {
+                showBlocker(targetUrl); // 차단 오버레이 표시
+                return; // navigation 차단
+            }
+            // 💡 END 집중 모드 URL 차단 로직
+            
+            // 허용된 URL이거나 집중 모드가 꺼져 있다면 이동
+            window.location.href = targetUrl; 
         } else {
             // It's a search term, submit the form normally
             this.submit(); 
@@ -304,7 +425,7 @@ function loadGoal() {
     if (savedGoal) {
         goalTextElement.textContent = savedGoal;
     } else {
-         goalTextElement.textContent = "🔥 오늘 당신의 목표 문구를 입력하세요. 🔥";
+         goalTextElement.textContent = "🔥 만약 1년 안에 1억을 벌지 못했을 때 당신이 죽는다면 어떤 일을 시작할건가요? 🔥";
     }
 
     goalTextElement.addEventListener('click', () => {
@@ -312,14 +433,14 @@ function loadGoal() {
         const input = document.createElement('input');
         
         input.type = 'text';
-        input.value = (currentText === "🔥 오늘 당신의 목표 문구를 입력하세요. 🔥") ? "" : currentText;
+        input.value = (currentText === "🔥 만약 1년 안에 1억을 벌지 못했을 때 당신이 죽는다면 어떤 일을 시작할건가요? 🔥") ? "" : currentText;
         input.id = 'goal-input-editor';
         
         goalTextElement.parentNode.replaceChild(input, goalTextElement);
         input.focus();
 
         const saveGoal = () => {
-            const newGoal = input.value.trim() || "🔥 오늘 당신의 목표 문구를 입력하세요. 🔥";
+            const newGoal = input.value.trim() || " 🔥만약 1년 안에 1억을 벌지 못했을 때 당신이 죽는다면 어떤 일을 시작할건가요? 🔥";
             localStorage.setItem(GOAL_STORAGE_KEY, newGoal);
             goalTextElement.textContent = newGoal;
             input.parentNode.replaceChild(goalTextElement, input);
@@ -344,9 +465,9 @@ function renderUserShortcuts() {
 
     urls.forEach((url) => {
         const a = document.createElement('a');
-        a.href = url;
+        a.href = "#"; // Prevent immediate navigation
         a.classList.add('shortcut-icon', 'user-shortcut-icon');
-        a.target = "_self"; // 현재 탭에서 열기
+        a.target = "_self";
         
         try {
             const domain = new URL(url).hostname;
@@ -360,6 +481,16 @@ function renderUserShortcuts() {
             a.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
             a.innerHTML = '🔗';
         }
+        
+        // 💡 바로가기 아이콘 클릭 시 URL 검사 로직 추가
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (!isUrlAllowed(url)) {
+                showBlocker(url);
+            } else {
+                window.location.href = url;
+            }
+        });
 
         userShortcutsList.appendChild(a);
     });
@@ -367,6 +498,35 @@ function renderUserShortcuts() {
 
 
 // --- 접근 가능 URL 기능 ---
+// 💡 URL 제한 로직을 포함하도록 addAccessibleUrl을 수정
+function addAccessibleUrl(newUrl) {
+    let urls = JSON.parse(localStorage.getItem(ACCESSIBLE_URLS_KEY) || '[]');
+    const urlInput = document.getElementById('url-input');
+    const urlWarning = document.getElementById('url-limit-warning');
+    
+    // 💡 제한 초과 시 경고 표시 (제한은 해제)
+    if (urls.length >= MAX_URLS) {
+        urlWarning.classList.add('active'); // 경고 문구 표시
+        urlInput.classList.add('shake'); // 흔들림 애니메이션 시작
+        setTimeout(() => urlInput.classList.remove('shake'), 500); // 애니메이션 후 클래스 제거
+        // return; // 추가 방지 로직 제거
+    }
+    
+    if (!newUrl.startsWith('http://') && !newUrl.startsWith('https://')) {
+        newUrl = 'https://' + newUrl;
+    }
+    
+    if (urls.includes(newUrl)) {
+        alert("이미 등록된 URL입니다.");
+        return;
+    }
+
+    urls.push(newUrl);
+    localStorage.setItem(ACCESSIBLE_URLS_KEY, JSON.stringify(urls));
+    loadAccessibleUrls();
+    renderUserShortcuts(); 
+}
+
 function updateAccessibleUrl(oldUrl, newUrl) {
     let urls = JSON.parse(localStorage.getItem(ACCESSIBLE_URLS_KEY) || '[]');
     
@@ -378,7 +538,6 @@ function updateAccessibleUrl(oldUrl, newUrl) {
     if (newUrl === oldUrl) return; 
 
     if (urls.includes(newUrl)) {
-        // 커스텀 알림/모달로 대체 권장
         alert("이미 등록된 URL입니다.");
         return;
     }
@@ -396,11 +555,18 @@ function updateAccessibleUrl(oldUrl, newUrl) {
 function loadAccessibleUrls() {
     let urls = JSON.parse(localStorage.getItem(ACCESSIBLE_URLS_KEY) || '[]');
     const listContainer = document.getElementById('accessible-urls-list');
+    const urlWarning = document.getElementById('url-limit-warning'); // 💡 경고 문구 참조
     listContainer.innerHTML = ''; 
 
     if (urls.length === 0) {
         listContainer.innerHTML = '<p class="setting-desc" style="color:#aaa;">등록된 웹사이트가 없습니다.</p>';
-        return;
+    }
+
+    // 💡 로드 시 제한 초과 여부를 확인하고 경고 문구 상태 업데이트
+    if (urls.length >= MAX_URLS) {
+        if(urlWarning) urlWarning.classList.add('active');
+    } else {
+        if(urlWarning) urlWarning.classList.remove('active');
     }
 
     urls.forEach((urlItem) => {
@@ -472,27 +638,9 @@ function loadAccessibleUrls() {
     });
 }
 
-function addAccessibleUrl(newUrl) {
-    let urls = JSON.parse(localStorage.getItem(ACCESSIBLE_URLS_KEY) || '[]');
-    
-    if (!newUrl.startsWith('http://') && !newUrl.startsWith('https://')) {
-        newUrl = 'https://' + newUrl;
-    }
-    
-    if (urls.includes(newUrl)) {
-        alert("이미 등록된 URL입니다.");
-        return;
-    }
-
-    urls.push(newUrl);
-    localStorage.setItem(ACCESSIBLE_URLS_KEY, JSON.stringify(urls));
-    loadAccessibleUrls();
-    renderUserShortcuts(); 
-}
-
 function deleteAccessibleUrl(urlToDelete) {
     let urls = JSON.parse(localStorage.getItem(ACCESSIBLE_URLS_KEY) || '[]');
-    urls = urls.filter(url => url !== urlToDelete);
+    urls = urls.filter(url => url !== urlToDelete); 
     localStorage.setItem(ACCESSIBLE_URLS_KEY, JSON.stringify(urls));
     loadAccessibleUrls();
     renderUserShortcuts(); 
@@ -502,11 +650,19 @@ function deleteAccessibleUrl(urlToDelete) {
 // --- 할 일 목록 기능 ---
 function loadTodos() {
     let todos = JSON.parse(localStorage.getItem(TODO_STORAGE_KEY) || '[]');
+    const todoWarning = document.getElementById('todo-limit-warning'); // 💡 경고 문구 참조
     
     todos.sort((a, b) => a.completed - b.completed); 
 
     const todoList = document.getElementById('todo-list');
     todoList.innerHTML = ''; 
+
+    // 💡 로드 시 제한 초과 여부를 확인하고 경고 문구 상태 업데이트
+    if (todos.length >= MAX_TODOS) {
+        if(todoWarning) todoWarning.classList.add('active');
+    } else {
+        if(todoWarning) todoWarning.classList.remove('active');
+    }
 
     todos.forEach((todoItem) => {
         const li = document.createElement('li');
@@ -541,11 +697,23 @@ function loadTodos() {
     localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(todos));
 }
 
+// 💡 할 일 제한 로직을 포함하도록 addTodo를 수정
 function addTodo(todoText) {
     const todos = JSON.parse(localStorage.getItem(TODO_STORAGE_KEY) || '[]');
+    const todoWarning = document.getElementById('todo-limit-warning');
+    
+    // 💡 제한 초과 시 경고 표시 (제한은 해제)
+    if (todos.length >= MAX_TODOS) {
+        if(todoWarning) todoWarning.classList.add('active'); // 경고 문구 표시
+        // return; // 추가 방지 로직 제거
+    }
+    
     todos.push({ text: todoText, completed: false });
     localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(todos));
     loadTodos(); 
+    
+    // 정상 추가 시 경고 문구 숨김 (혹시 모를 상황 대비) 로직 제거. loadTodos에서 상태를 갱신합니다.
+    // if(todoWarning) todoWarning.classList.remove('active');
 }
 
 function toggleComplete(todoText) {
@@ -583,18 +751,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const todoInput = document.getElementById('todo-input');
     
     const todoContainer = document.getElementById('todo-list-container');
+    const todos = JSON.parse(localStorage.getItem(TODO_STORAGE_KEY) || '[]');
+    if (todos.length > 0) {
+        todoContainer.style.display = 'block';
+    }
     const todoToggleButton = document.getElementById('todo-toggle-btn');
     
     const settingsPanel = document.getElementById('settings-panel');
     const settingsButton = document.getElementById('settings-btn');
     const closeSettingsButton = document.getElementById('close-settings-btn');
-    
+    const closeTodoListButton = document.getElementById('close-todoList-btn');
     const addUrlForm = document.getElementById('add-url-form'); 
     const urlInput = document.getElementById('url-input');
     
     const focusToggle = document.getElementById('focus-mode-toggle');
+    const scheduleToggle = document.getElementById('focus-schedule-toggle'); 
     const focusStart = document.getElementById('focus-start-time');
     const focusEnd = document.getElementById('focus-end-time');
+
+    // 💡 Blocker Action Listeners 추가
+    document.getElementById('blocker-confirm-yes').addEventListener('click', () => {
+        if (blockedTargetUrl) {
+            window.location.href = blockedTargetUrl; // 예: 접근
+        }
+        hideBlocker(); 
+    });
+
+    document.getElementById('blocker-confirm-no').addEventListener('click', () => {
+        hideBlocker(); // 아니오: 새 탭 페이지로 돌아감 (오버레이만 닫음)
+    });
+
 
     // --- 이벤트 리스너 ---
 
@@ -647,10 +833,16 @@ document.addEventListener('DOMContentLoaded', () => {
         settingsPanel.classList.remove('open');
         setTimeout(() => settingsPanel.style.display = 'none', 300);
     });
+
+    closeTodoListButton.addEventListener('click', () => {
+        todoContainer.style.display = 'none'; 
+    });
+    
     
     // Focus Mode 이벤트 리스너: 설정 변경 시 저장
-    if (focusToggle) {
+    if (focusToggle && scheduleToggle) {
         focusToggle.addEventListener('change', saveFocusSettings);
+        scheduleToggle.addEventListener('change', saveFocusSettings); 
         focusStart.addEventListener('change', saveFocusSettings);
         focusEnd.addEventListener('change', saveFocusSettings);
     }

@@ -9,71 +9,86 @@
 </head>
 <body class="">
 
-    <!-- Focus Mode Indicator -->
     <div class="focus-mode-indicator">
         🔥 집중 모드 활성화 중! 허용 목록 외 접근은 차단됩니다. 🔥
     </div>
 
     <div class="container">
-        <!-- Time & Goal Area -->
         <div class="time-goal-area">
             <div id="date"></div>
             <div id="time">00:00:00</div>
-            <p id="goal-text">🔥 오늘 당신의 목표 문구를 입력하세요. 🔥</p>
+            <p id="goal-text">🔥 만약 1년 안에 1억을 벌지 못했을 때 당신이 죽는다면 어떤 일을 시작할건가요?🔥</p>
+            <p id="information-text">이곳에 당신의 목표를 적어두고 상기해보세요.</p>
         </div>
 
-        <!-- Search Area -->
-        <form id="search-form" action="https://www.google.com/search" method="GET">
-            <input type="text" id="search-input" name="q" placeholder="Google 검색 또는 URL 입력...">
-            <div id="autocomplete-results"></div>
-        </form>
+        <div class="search-shortcuts-area">
+            <form id="search-form" action="https://www.google.com/search" method="get" target="_self">
+                <input type="text" id="search-input" name="q" placeholder="구글 검색 또는 URL 입력" autocomplete="off" class="input-field">
+            </form>
+            <div id="autocomplete-results" class="autocomplete-results"></div>
+            
+            <div id="user-shortcuts-list" class="shortcuts-list">
+                </div>
+        </div>
 
-        <!-- Shortcuts Area -->
-        <div class="shortcuts-area">
-            <div class="shortcuts-list" id="user-shortcuts-list">
-                <!-- User-defined shortcuts will be rendered here -->
+        <div class="utility-buttons">
+            <button id="todo-toggle-btn" class="utility-btn" title="할 일 목록 열기/닫기">
+                <i class="fa-solid fa-list-check"></i>
+            </button>
+            <button id="settings-btn" class="utility-btn" title="설정">
+                <i class="fa-solid fa-gear"></i>
+            </button>
+        </div>
+
+        <div id="todo-list-container" class="todo-list-container" style="display:none;">
+            <div class="todo-header">
+                <h3>오늘의 할 일</h3>
+                <button id="close-todoList-btn" class="close-btn" title="닫기">&times;</button>
             </div>
+            
+            <form id="add-todo-form" class="flex-group mb-20">
+                <input type="text" id="todo-input" placeholder="새로운 할 일" required class="input-field-dark">
+                <button type="submit" class="submit_btn">추가</button>
+            </form>
+            
+            <div id="todo-limit-warning" class="limit-warning todo-warning">
+                목표 설정이 너무 많진 않을까요? 10개를 초과했습니다.
+            </div>
+
+            <ul id="todo-list">
+                </ul>
         </div>
     </div>
+    
+    <div id="settings-panel" class="settings-panel">
+        <div class="settings-header">
+            <h2>설정</h2>
+            <button id="close-settings-btn" class="close-btn" title="닫기">&times;</button>
+        </div>
 
-    <!-- ToDo List -->
-    <div id="todo-list-container" class="hidden">
-        <h2 class="text-xl font-bold mb-2">오늘 할 일</h2>
-        <ul id="todo-list">
-            <!-- ToDo items here -->
-        </ul>
-        <form id="add-todo-form">
-            <input type="text" id="todo-input" placeholder="새로운 할 일 추가" required>
-            <button type="submit">+</button>
-        </form>
-    </div>
-
-    <!-- Utility Buttons (Circular Icons) -->
-    <!-- 할 일 토글 버튼: Font Awesome list-check 아이콘 사용 -->
-    <button id="todo-toggle-btn" title="할 일 토글"><i class="fas fa-list-check"></i></button>
-    <!-- 설정 버튼: Font Awesome cog 아이콘 사용 -->
-    <button id="settings-btn" title="설정 및 사용자 지정"><i class="fas fa-cog"></i></button>
-
-    <!-- Settings Panel (위치 변경됨) -->
-    <div id="settings-panel">
-        <div class="settings-content">
-            <button id="close-settings-btn">✕</button>
-            <h2 class="text-2xl font-bold mb-5">⚙️ 설정 및 사용자 지정</h2>
-
-            <!-- Focus Mode Settings -->
+        <div class="settings-body">
             <div class="setting-section">
+                <span class="setting-title">집중 모드</span>
                 <div class="setting-row">
-                    <span class="setting-title" style="color:var(--focus-mode-color);">집중 모드</span>
+                    <span>수동 활성화</span>
                     <label class="switch">
                         <input type="checkbox" id="focus-mode-toggle">
                         <span class="slider"></span>
                     </label>
                 </div>
+                
+                <div class="setting-row mt-4">
+                    <span>스케줄 예약</span>
+                    <label class="switch">
+                        <input type="checkbox" id="focus-schedule-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
                 <p class="setting-desc">집중 모드가 켜지면, 아래 허용 목록에 없는 모든 URL 접근은 차단됩니다.</p>
                 
                 <div class="mt-4">
-                    <span class="setting-title">자동 스케줄 설정</span>
-                    <div class="flex-container-small">
+                    <div class="flex-container-small" id="focus-time-controls">
                         <span>시작 시간:</span>
                         <input type="time" id="focus-start-time" class="setting-time-input">
                         <span>종료 시간:</span>
@@ -82,7 +97,6 @@
                 </div>
             </div>
 
-            <!-- Accessible URLs Settings -->
             <div class="setting-section">
                 <div class="setting-title">허용 웹사이트 목록 (Allowlist)</div>
                 <p class="setting-desc">집중 모드 시 접근을 허용할 URL을 입력하세요. (예: https://google.com)</p>
@@ -90,12 +104,28 @@
                     <input type="url" id="url-input" placeholder="URL 입력 (예: google.com)" required class="input-field-dark">
                     <button type="submit" class="submit_btn">추가</button>
                 </form>
-                <div id="accessible-urls-list" class="scrollable-content">
-                    <!-- URL list will be loaded here -->
+                <div id="url-limit-warning" class="limit-warning url-warning">
+                    목표를 위한 필수적인 페이지가 맞을까요? 10개를 초과했습니다.
                 </div>
+                <div id="accessible-urls-list" class="scrollable-content">
+                    </div>
             </div>
         </div>
     </div>
+    
+    <div id="focus-blocker-overlay" class="blocker-overlay" style="display:none;">
+        <div class="blocker-content">
+            <h2>🚨 집중 모드 경고: 방해 웹사이트 접근 시도</h2>
+            <p>현재 <span class="highlight-text">집중 모드</span>가 활성화되어 있습니다.</p>
+            <p>목표 달성을 위해 허용 목록에 없는 웹사이트(<strong id="blocked-url-display"></strong>)에 접근하시겠습니까?</p>
+            <div class="blocker-actions">
+                <button id="blocker-confirm-yes" class="btn-proceed">예, 접근합니다</button>
+                <button id="blocker-confirm-no" class="btn-cancel">아니오, 돌아갑니다</button>
+            </div>
+            <p class="small-text">신중하게 선택하세요. 목표가 눈앞에 있습니다!</p>
+        </div>
+    </div>
+
 </body>
 <script src="newtab.js"></script>
 </html>

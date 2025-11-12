@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>집중 모드 경고</title>
+    <link rel="stylesheet" href="newtab.css"/> 
+    <style>
+        /* 경고 페이지는 오버레이만 보여줘야 하므로 body 스타일 조정 */
+        body {
+            /* newtab.css에 있는 body 스타일을 오버라이드하여 경고 화면만 중앙에 표시 */
+            background: #1a1a1a; 
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0;
+            margin: 0;
+        }
+        /* newtab.css에 정의된 .blocker-overlay 스타일을 재활용 */
+        .blocker-overlay {
+            /* warning.html의 body가 전체 화면이므로 오버레이 스타일을 약간 수정 */
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex !important; /* 항상 보이게 설정 */
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="focus-blocker-overlay" class="blocker-overlay">
+        <div class="blocker-content">
+            <h2>🚨 집중 모드 경고: 방해 웹사이트 접근 시도</h2>
+            <p>현재 <span class="highlight-text">집중 모드</span>가 활성화되어 있습니다.</p>
+            <p>목표 달성을 위해 허용 목록에 없는 웹사이트(<strong id="blocked-url-display"></strong>)에 **정말 필요한 페이지**라서 접근하시겠습니까?</p>
+            <div class="blocker-actions">
+                <button id="blocker-confirm-yes" class="btn-proceed">예, (짧은 시간만) 접근하겠습니다.</button>
+                <button id="blocker-cancel-no" class="btn-cancel">아니요, 목표에 집중하겠습니다.</button>
+            </div>
+            <p class="small-text">이 페이지는 허용 목록에 없습니다. '예'를 선택하면 해당 페이지로 이동합니다.</p>
+        </div>
+    </div>
+    <script src="warning.js"></script>
+</body>
+</html>

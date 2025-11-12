@@ -3,14 +3,21 @@
   "name": "집중이라고 이 새끼야.",
   "version": "1.0",
   "description": "목표에 가까워지고 싶은 사람이 사용하는 집중력 향상에 꼭 필요한 익스텐션",
-  "action": { 
+  "action": {
     "default_popup": "popup/popup.html"
   },
-  "chrome_url_overrides": { 
+  "chrome_url_overrides": {
     "newtab": "popup/newtab.html"
   },
-  "background": { 
-    "service_worker": "background.js"
+  "permissions": [
+    "storage", 
+    "tabs", 
+    "webRequest" 
+  ],
+  "host_permissions": [
+  ],
+  "background": {
+    "service_worker": "background.js" 
   },
   "content_scripts": [
     {
