@@ -194,7 +194,7 @@
     /* --- Utility Buttons --- */
     .utility-buttons {
         position: fixed;
-        bottom: 20px;
+        top: 20px;
         left: 20px;
         display: flex;
         flex-direction: column;
@@ -232,7 +232,7 @@
     /* --- ToDo List Container --- */
     .todo-list-container {
         position: fixed;
-        top: 20px;
+        bottom: 20px;
         left: 20px;
         width: 100%;
         max-width: 350px;

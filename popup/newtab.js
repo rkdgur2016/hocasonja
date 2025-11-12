@@ -64,35 +64,36 @@ function checkFocusModeSchedule(currentTimeStr) {
     const manualToggle = document.getElementById('focus-mode-toggle');
     // 로컬 스토리지에서 상태를 읽어옵니다. (loadSettings에서 UI는 동기화됨)
     const isScheduleEnabled = localStorage.getItem(FOCUS_SCHEDULE_TOGGLE_KEY) === 'on'; 
-    const isFocusModeOn = localStorage.getItem(FOCUS_MODE_KEY) === 'on';
+    
+    // chrome.storage 사용으로 변경 (background.js와 통일)
+    chrome.storage.local.get([FOCUS_MODE_KEY], function(data) {
+        const isFocusModeOn = data[FOCUS_MODE_KEY] === 'on';
 
-    if (!manualToggle) return;
+        if (!manualToggle) return;
 
-    if (isScheduleEnabled) {
-        // --- 1. 자동 스케줄 모드 (Schedule ON) ---
-        const start = localStorage.getItem(FOCUS_START_TIME_KEY);
-        const end = localStorage.getItem(FOCUS_END_TIME_KEY);
-        
-        if (start && end) {
-            const isActiveTime = isTimeBetween(start, end, currentTimeStr);
+        if (isScheduleEnabled) {
+            // --- 1. 자동 스케줄 모드 (Schedule ON) ---
+            const start = localStorage.getItem(FOCUS_START_TIME_KEY);
+            const end = localStorage.getItem(FOCUS_END_TIME_KEY);
             
-            // 현재 시간이 스케줄 구간이면 ON으로 설정 (수동 토글 무시)
-            if (isActiveTime) {
-                if (!isFocusModeOn) {
-                    setFocusModeState(true, false); // 스케줄에 의한 ON
-                }
-            } else {
-                // 현재 시간이 스케줄 구간이 아니면 OFF로 설정 (수동 토글 무시)
-                if (isFocusModeOn) {
-                    setFocusModeState(false, false); // 스케줄에 의한 OFF
+            if (start && end) {
+                const isActiveTime = isTimeBetween(start, end, currentTimeStr);
+                
+                // 현재 시간이 스케줄 구간이면 ON으로 설정
+                if (isActiveTime) {
+                    if (!isFocusModeOn) {
+                        setFocusModeState(true, false); // 스케줄에 의한 ON
+                    }
+                } else {
+                    // 현재 시간이 스케줄 구간이 아니면 OFF로 설정
+                    if (isFocusModeOn) {
+                        setFocusModeState(false, false); // 스케줄에 의한 OFF
+                    }
                 }
             }
-        }
-    } else {
-        // --- 2. 수동 모드 (Schedule OFF) ---
-        // 수동 토글 상태를 유지/반영합니다.
-        // setFocusModeState(manualToggle.checked, true); // updateTime에서는 중복 방지
-    }
+        } 
+        // Note: Schedule OFF일 때는 수동 토글 상태를 loadSettings나 saveFocusSettings에서 처리
+    });
 }
 
 
@@ -106,8 +107,8 @@ function setFocusModeState(state, updateManualToggle) {
     const indicator = document.querySelector('.focus-mode-indicator');
     const manualToggle = document.getElementById('focus-mode-toggle');
     
-    // 상태를 localStorage에 저장
-    localStorage.setItem(FOCUS_MODE_KEY, state ? 'on' : 'off');
+    // 상태를 chrome.storage에 저장 (background.js에서 모니터링)
+    chrome.storage.local.set({ [FOCUS_MODE_KEY]: state ? 'on' : 'off' });
     
     if (state) {
         body.classList.add('focus-mode');
@@ -155,27 +156,30 @@ function updateTimeControlsState() {
 // --- 설정 로드 및 저장 ---
 function loadSettings() {
     // 1. Focus Mode Settings
-    // 저장된 실제 집중 모드 상태를 가져옵니다.
-    const isFocusOn = localStorage.getItem(FOCUS_MODE_KEY) === 'on'; 
-    const isScheduleOn = localStorage.getItem(FOCUS_SCHEDULE_TOGGLE_KEY) === 'on'; 
-    const startTime = localStorage.getItem(FOCUS_START_TIME_KEY) || '09:00';
-    const endTime = localStorage.getItem(FOCUS_END_TIME_KEY) || '17:00';
-    
-    const manualToggle = document.getElementById('focus-mode-toggle');
-    const scheduleToggle = document.getElementById('focus-schedule-toggle'); 
-    const startInput = document.getElementById('focus-start-time');
-    const endInput = document.getElementById('focus-end-time');
+    // chrome.storage에서 실제 집중 모드 상태를 가져옵니다.
+    chrome.storage.local.get([FOCUS_MODE_KEY], function(data) {
+        const isFocusOn = data[FOCUS_MODE_KEY] === 'on'; 
+        
+        const isScheduleOn = localStorage.getItem(FOCUS_SCHEDULE_TOGGLE_KEY) === 'on'; 
+        const startTime = localStorage.getItem(FOCUS_START_TIME_KEY) || '09:00';
+        const endTime = localStorage.getItem(FOCUS_END_TIME_KEY) || '17:00';
+        
+        const manualToggle = document.getElementById('focus-mode-toggle');
+        const scheduleToggle = document.getElementById('focus-schedule-toggle'); 
+        const startInput = document.getElementById('focus-start-time');
+        const endInput = document.getElementById('focus-end-time');
 
-    // 초기 로드 시 로컬 상태 반영
-    if (manualToggle) manualToggle.checked = isFocusOn; 
-    if (scheduleToggle) scheduleToggle.checked = isScheduleOn; 
-    if (startInput) startInput.value = startTime;
-    if (endInput) endInput.value = endTime;
+        // 초기 로드 시 로컬 상태 반영
+        if (manualToggle) manualToggle.checked = isFocusOn; 
+        if (scheduleToggle) scheduleToggle.checked = isScheduleOn; 
+        if (startInput) startInput.value = startTime;
+        if (endInput) endInput.value = endTime;
 
-    // UI 초기 상태 반영
-    setFocusModeState(isFocusOn, true); 
-    
-    updateTimeControlsState(); 
+        // UI 초기 상태 반영
+        setFocusModeState(isFocusOn, true); 
+        
+        updateTimeControlsState(); 
+    });
 }
 
 function saveFocusSettings() {
@@ -195,15 +199,12 @@ function saveFocusSettings() {
     
     if (!isScheduleOn) {
         // 스케줄이 꺼져 있다면, 수동 토글의 상태를 최종 상태로 저장하고 즉시 적용합니다.
-        localStorage.setItem(FOCUS_MODE_KEY, isManualOn ? 'on' : 'off');
         setFocusModeState(isManualOn, true); 
     } else {
-        // 스케줄이 켜져 있다면, 수동 토글의 상태만 저장하고, 실제 상태는 스케줄에 맡깁니다.
-        localStorage.setItem(FOCUS_MODE_KEY, isManualOn ? 'on' : 'off');
-        
+        // 스케줄이 켜져 있다면, 수동 토글 상태만 저장하고, 실제 상태는 스케줄에 맡깁니다.
         // 스케줄 ON일 때 saveFocusSettings가 호출되면, 즉시 스케줄 검사를 다시 수행하여 반영
         const now = new Date();
-        const hours = now.getHours().toString().padStart(2, '0');
+        const hours = now.getHours().getHours().toString().padStart(2, '0');
         const minutes = now.getMinutes().toString().padStart(2, '0');
         checkFocusModeSchedule(`${hours}:${minutes}`);
     }
@@ -223,61 +224,11 @@ function debounce(func, delay) {
 }
 
 
-// --- URL 차단 기능 (Focus Blocker) 추가 ---
-let blockedTargetUrl = ''; // 차단된 URL을 임시 저장하는 전역 변수
-
-// Helper function to get a clean hostname for comparison
-function getHostname(url) {
-    try {
-        // Ensure the URL has a protocol for the URL object to parse it
-        if (!url.startsWith('http://') && !url.startsWith('https://')) {
-            url = 'https://' + url;
-        }
-        return new URL(url).hostname.replace(/^www\./, '');
-    } catch (e) {
-        return null; 
-    }
-}
-
-// Check if the given URL is in the allowlist
-function isUrlAllowed(targetUrl) {
-    const isFocusOn = localStorage.getItem(FOCUS_MODE_KEY) === 'on';
-    if (!isFocusOn) {
-        return true; // Focus Mode is off, allow everything
-    }
-
-    let allowedUrls = JSON.parse(localStorage.getItem(ACCESSIBLE_URLS_KEY) || '[]');
-    
-    // 1. Check for exact match (full URL as stored)
-    if (allowedUrls.includes(targetUrl)) {
-        return true;
-    }
-
-    // 2. Check for domain match (more robust)
-    const targetHostname = getHostname(targetUrl);
-    
-    // Check if any of the allowed URLs have the same hostname
-    const isHostnameAllowed = allowedUrls.some(allowedUrl => {
-        const allowedHostname = getHostname(allowedUrl);
-        return allowedHostname && targetHostname === allowedHostname;
-    });
-
-    return isHostnameAllowed;
-}
-
-// Function to handle the blocking UI
-function showBlocker(url) {
-    blockedTargetUrl = url;
-    document.getElementById('blocked-url-display').textContent = url;
-    document.getElementById('focus-blocker-overlay').style.display = 'flex';
-}
-
-function hideBlocker() {
-    blockedTargetUrl = '';
-    document.getElementById('focus-blocker-overlay').style.display = 'none';
-    document.getElementById('search-input').value = ''; // 검색 필드 초기화
-}
-// --- END URL 차단 기능 추가 ---
+// --- URL 차단 기능 (Focus Blocker) 제거됨 ---
+/*
+    **이 섹션은 background.js로 이동되었습니다.**
+    (getHostname, isUrlAllowed, showBlocker, hideBlocker 관련 로직 제거)
+*/
 
 
 // --- 검색 기능 (자동 완성 포함) ---
@@ -302,6 +253,7 @@ function setupSearch() {
             const response = await fetch(SUGGEST_URL + encodeURIComponent(query));
             const text = await response.text();
             
+            // JSONP 스타일의 응답을 JSON으로 파싱
             const jsonText = text.substring(text.indexOf('[') - 1, text.lastIndexOf(']') + 1).trim();
             const data = JSON.parse(jsonText);
             
@@ -331,7 +283,7 @@ function setupSearch() {
             
             item.addEventListener('click', function() {
                 searchInput.value = suggestion;
-                // 바로 submit 대신, submit 이벤트 핸들러를 실행하여 URL 검사 로직을 타도록 함
+                // 바로 submit 대신, submit 이벤트 핸들러를 실행
                 searchForm.dispatchEvent(new Event('submit', { cancelable: true })); 
                 hideAutocomplete();
             });
@@ -386,14 +338,7 @@ function setupSearch() {
                 targetUrl = 'https://' + targetUrl;
             }
             
-            // 💡 집중 모드 URL 차단 로직 추가
-            if (!isUrlAllowed(targetUrl)) {
-                showBlocker(targetUrl); // 차단 오버레이 표시
-                return; // navigation 차단
-            }
-            // 💡 END 집중 모드 URL 차단 로직
-            
-            // 허용된 URL이거나 집중 모드가 꺼져 있다면 이동
+            // 💡 [수정] URL 차단 로직 제거: 이제 background.js가 웹 요청을 가로챕니다.
             window.location.href = targetUrl; 
         } else {
             // It's a search term, submit the form normally
@@ -425,7 +370,7 @@ function loadGoal() {
     if (savedGoal) {
         goalTextElement.textContent = savedGoal;
     } else {
-         goalTextElement.textContent = "🔥 만약 1년 안에 1억을 벌지 못했을 때 당신이 죽는다면 어떤 일을 시작할건가요? 🔥";
+        goalTextElement.textContent = "🔥 만약 1년 안에 1억을 벌지 못했을 때 당신이 죽는다면 어떤 일을 시작할건가요? 🔥";
     }
 
     goalTextElement.addEventListener('click', () => {
@@ -482,14 +427,10 @@ function renderUserShortcuts() {
             a.innerHTML = '🔗';
         }
         
-        // 💡 바로가기 아이콘 클릭 시 URL 검사 로직 추가
+        // 💡 [수정] 바로가기 아이콘 클릭 시 URL 검사 로직 제거: 이제 background.js가 웹 요청을 가로챕니다.
         a.addEventListener('click', (e) => {
             e.preventDefault();
-            if (!isUrlAllowed(url)) {
-                showBlocker(url);
-            } else {
-                window.location.href = url;
-            }
+            window.location.href = url;
         });
 
         userShortcutsList.appendChild(a);
@@ -504,12 +445,11 @@ function addAccessibleUrl(newUrl) {
     const urlInput = document.getElementById('url-input');
     const urlWarning = document.getElementById('url-limit-warning');
     
-    // 💡 제한 초과 시 경고 표시 (제한은 해제)
+    // 💡 제한 초과 시 경고 표시 
     if (urls.length >= MAX_URLS) {
         urlWarning.classList.add('active'); // 경고 문구 표시
         urlInput.classList.add('shake'); // 흔들림 애니메이션 시작
         setTimeout(() => urlInput.classList.remove('shake'), 500); // 애니메이션 후 클래스 제거
-        // return; // 추가 방지 로직 제거
     }
     
     if (!newUrl.startsWith('http://') && !newUrl.startsWith('https://')) {
@@ -522,7 +462,11 @@ function addAccessibleUrl(newUrl) {
     }
 
     urls.push(newUrl);
+    
+    // chrome.storage와 localStorage 동기화 (Background.js가 chrome.storage를 감시)
     localStorage.setItem(ACCESSIBLE_URLS_KEY, JSON.stringify(urls));
+    chrome.storage.local.set({ [ACCESSIBLE_URLS_KEY]: urls });
+    
     loadAccessibleUrls();
     renderUserShortcuts(); 
 }
@@ -545,7 +489,11 @@ function updateAccessibleUrl(oldUrl, newUrl) {
     const index = urls.indexOf(oldUrl);
     if (index !== -1) {
         urls[index] = newUrl;
+        
+        // chrome.storage와 localStorage 동기화
         localStorage.setItem(ACCESSIBLE_URLS_KEY, JSON.stringify(urls));
+        chrome.storage.local.set({ [ACCESSIBLE_URLS_KEY]: urls });
+        
         loadAccessibleUrls();
         renderUserShortcuts();
     }
@@ -641,7 +589,11 @@ function loadAccessibleUrls() {
 function deleteAccessibleUrl(urlToDelete) {
     let urls = JSON.parse(localStorage.getItem(ACCESSIBLE_URLS_KEY) || '[]');
     urls = urls.filter(url => url !== urlToDelete); 
+    
+    // chrome.storage와 localStorage 동기화
     localStorage.setItem(ACCESSIBLE_URLS_KEY, JSON.stringify(urls));
+    chrome.storage.local.set({ [ACCESSIBLE_URLS_KEY]: urls });
+    
     loadAccessibleUrls();
     renderUserShortcuts(); 
 }
@@ -705,15 +657,11 @@ function addTodo(todoText) {
     // 💡 제한 초과 시 경고 표시 (제한은 해제)
     if (todos.length >= MAX_TODOS) {
         if(todoWarning) todoWarning.classList.add('active'); // 경고 문구 표시
-        // return; // 추가 방지 로직 제거
     }
     
     todos.push({ text: todoText, completed: false });
     localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(todos));
     loadTodos(); 
-    
-    // 정상 추가 시 경고 문구 숨김 (혹시 모를 상황 대비) 로직 제거. loadTodos에서 상태를 갱신합니다.
-    // if(todoWarning) todoWarning.classList.remove('active');
 }
 
 function toggleComplete(todoText) {
@@ -753,8 +701,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const todoContainer = document.getElementById('todo-list-container');
     const todos = JSON.parse(localStorage.getItem(TODO_STORAGE_KEY) || '[]');
     if (todos.length > 0) {
+        // [수정] 초기 로드 시 내용이 있으면 display: block 설정
+        todoContainer.style.display = 'block'; 
         todoContainer.classList.add('open');
-        todoContainer.style.display = 'block';
     }
     const todoToggleButton = document.getElementById('todo-toggle-btn');
     
@@ -770,17 +719,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const focusStart = document.getElementById('focus-start-time');
     const focusEnd = document.getElementById('focus-end-time');
 
-    // 💡 Blocker Action Listeners 추가
-    document.getElementById('blocker-confirm-yes').addEventListener('click', () => {
-        if (blockedTargetUrl) {
-            window.location.href = blockedTargetUrl; // 예: 접근
-        }
-        hideBlocker(); 
-    });
-
-    document.getElementById('blocker-confirm-no').addEventListener('click', () => {
-        hideBlocker(); // 아니오: 새 탭 페이지로 돌아감 (오버레이만 닫음)
-    });
+    // 💡 [제거됨] Blocker Action Listeners는 warning.js로 이동했습니다.
+    /*
+    document.getElementById('blocker-confirm-yes').addEventListener('click', ...);
+    document.getElementById('blocker-confirm-no').addEventListener('click', ...);
+    */
 
 
     // --- 이벤트 리스너 ---
@@ -813,23 +756,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const isOpen = todoContainer.classList.contains('open');
         
         if (!isOpen) {
-            todoContainer.style.display = 'block'; 
-            setTimeout(() => todoContainer.classList.add('open'), 10);
-        } else {
-            todoContainer.classList.remove('open');
-            setTimeout(() => todoContainer.style.display = 'none', 300);
-        }
+            // 열기: display를 먼저 block으로 설정
+            todoContainer.style.display = 'block'; 
+            // 다음 틱에 open 클래스 추가하여 슬라이드 인 애니메이션 실행
+            setTimeout(() => todoContainer.classList.add('open'), 10);
+        } else {
+            // 닫기: open 클래스 제거하여 슬라이드 아웃 애니메이션 실행
+            todoContainer.classList.remove('open');
+            // 애니메이션 완료(300ms) 후 display: none 처리
+            setTimeout(() => todoContainer.style.display = 'none', 300);
+        }
     });
     
     // ToDo List Close 버튼
     closeTodoListButton.addEventListener('click', () => {
-        const todoContainer = document.getElementById('todo-list-container');
-        
-        // 💡 [수정] 닫기: open 클래스 제거하여 슬라이드 아웃 애니메이션 실행
-        todoContainer.classList.remove('open');
-        // 애니메이션 완료(300ms) 후 display: none 처리
-        setTimeout(() => todoContainer.style.display = 'none', 300);
-    });
+        const todoContainer = document.getElementById('todo-list-container');
+        // 닫기: open 클래스 제거하여 슬라이드 아웃 애니메이션 실행
+        todoContainer.classList.remove('open');
+        // 애니메이션 완료(300ms) 후 display: none 처리
+        setTimeout(() => todoContainer.style.display = 'none', 300);
+    });
     
     // Settings Panel Toggle
     settingsButton.addEventListener('click', () => {

@@ -1,38 +1,39 @@
-// warning.js
-
 document.addEventListener('DOMContentLoaded', () => {
+    // 1. URL 쿼리 매개변수 파싱
     const urlParams = new URLSearchParams(window.location.search);
     const targetUrl = urlParams.get('target');
     
-    if (!targetUrl) {
-        // target URL이 없으면 새 탭 페이지로 이동
-        chrome.tabs.update({ url: chrome.runtime.getURL('popup/newtab.html') }); 
-        return;
+    // 💡 [ID 재확인] warning.html의 버튼 ID가 'confirm-yes'와 'confirm-no'인지 확인
+    const blockedUrlDisplay = document.getElementById('blocked-url-display');
+    const confirmYes = document.getElementById('confirm-yes'); 
+    const confirmNo = document.getElementById('confirm-no'); 
+
+    if (targetUrl) {
+        blockedUrlDisplay.textContent = decodeURIComponent(targetUrl);
+    } else {
+        blockedUrlDisplay.textContent = '알 수 없는 URL';
     }
 
-    const decodedUrl = decodeURIComponent(targetUrl);
-    const urlDisplay = document.getElementById('blocked-url-display');
+    // --- 이벤트 리스너 ---
     
-    if (urlDisplay) {
-        urlDisplay.textContent = decodedUrl;
-    }
+    // [예, 접근합니다] 버튼 클릭 시: 원래 목표 URL로 이동
+    confirmYes.addEventListener('click', () => {
+        if (targetUrl) {
+            // window.location.href 사용: 이 요청은 background.js가 차단하지 않습니다.
+            window.location.href = decodeURIComponent(targetUrl);
+        } else {
+            // 💡 [경로 수정] 새 탭 페이지로 이동
+            window.location.href = chrome.runtime.getURL('newtab.html');
+        }
+    });
 
-    const confirmYesButton = document.getElementById('blocker-confirm-yes');
-    const cancelButton = document.getElementById('blocker-cancel-no');
-
-    // '예, 접근하겠습니다' 클릭 시: 원래 URL로 이동
-    if (confirmYesButton) {
-        confirmYesButton.addEventListener('click', () => {
-            // 현재 탭의 URL을 원래 목표 URL로 변경
-            chrome.tabs.update({ url: decodedUrl }); 
-        });
-    }
-
-    // '아니요, 집중하겠습니다' 클릭 시: 새 탭 페이지로 리다이렉션
-    if (cancelButton) {
-        cancelButton.addEventListener('click', () => {
-            // 새 탭 페이지로 이동
-            chrome.tabs.update({ url: chrome.runtime.getURL('popup/newtab.html') });
-        });
-    }
+    // [아니오, 돌아갑니다] 버튼 클릭 시: 이전 페이지로 복귀
+    confirmNo.addEventListener('click', () => {
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            // 💡 [경로 수정] 새 탭 페이지로 이동
+            window.location.href = chrome.runtime.getURL('newtab.html');
+        }
+    });
 });
