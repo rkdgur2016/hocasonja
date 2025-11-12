@@ -753,6 +753,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const todoContainer = document.getElementById('todo-list-container');
     const todos = JSON.parse(localStorage.getItem(TODO_STORAGE_KEY) || '[]');
     if (todos.length > 0) {
+        todoContainer.classList.add('open');
         todoContainer.style.display = 'block';
     }
     const todoToggleButton = document.getElementById('todo-toggle-btn');
@@ -807,9 +808,28 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // ToDo Toggle
     todoToggleButton.addEventListener('click', () => {
-        const isHidden = window.getComputedStyle(todoContainer).display === 'none';
-        todoContainer.style.display = isHidden ? 'block' : 'none'; 
+
+        const todoContainer = document.getElementById('todo-list-container');
+        const isOpen = todoContainer.classList.contains('open');
+        
+        if (!isOpen) {
+            todoContainer.style.display = 'block'; 
+            setTimeout(() => todoContainer.classList.add('open'), 10);
+        } else {
+            todoContainer.classList.remove('open');
+            setTimeout(() => todoContainer.style.display = 'none', 300);
+        }
     });
+    
+    // ToDo List Close 버튼
+    closeTodoListButton.addEventListener('click', () => {
+        const todoContainer = document.getElementById('todo-list-container');
+        
+        // 💡 [수정] 닫기: open 클래스 제거하여 슬라이드 아웃 애니메이션 실행
+        todoContainer.classList.remove('open');
+        // 애니메이션 완료(300ms) 후 display: none 처리
+        setTimeout(() => todoContainer.style.display = 'none', 300);
+    });
     
     // Settings Panel Toggle
     settingsButton.addEventListener('click', () => {
@@ -833,11 +853,6 @@ document.addEventListener('DOMContentLoaded', () => {
         settingsPanel.classList.remove('open');
         setTimeout(() => settingsPanel.style.display = 'none', 300);
     });
-
-    closeTodoListButton.addEventListener('click', () => {
-        todoContainer.style.display = 'none'; 
-    });
-    
     
     // Focus Mode 이벤트 리스너: 설정 변경 시 저장
     if (focusToggle && scheduleToggle) {

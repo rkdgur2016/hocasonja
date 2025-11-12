@@ -17,8 +17,8 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 20px;
         transition: background-color 0.5s;
+        margin: 0;
     }
 
     body.focus-mode {
@@ -43,6 +43,7 @@
         display: flex;
         flex-direction: column;
         align-items: center;
+        margin-top : 4%;
         width: 100%;
         max-width: 800px;
         position: relative;
@@ -241,8 +242,21 @@
         padding: 20px;
         backdrop-filter: blur(10px);
         z-index: 100;
-        transition: opacity 0.3s, transform 0.3s;
-        transform-origin: top left;
+        
+        /* 💡 애니메이션의 기본 상태 (숨겨진 상태) */
+        transform: translateX(-110%); /* 화면 밖으로 완전히 밀어 숨김 */
+        opacity: 0; /* 투명도 0으로 설정 */
+        
+        /* 💡 트랜지션 설정 (부드러운 움직임) */
+        transition: transform 0.3s ease-out, opacity 0.3s ease-out; 
+        
+        display: none; /* 💡 초기에는 아예 렌더링되지 않도록 숨김 */
+    }
+    
+    /* 💡 'open' 클래스가 추가되면 나타나도록 설정 */
+    .todo-list-container.open {
+        transform: translateX(0); /* 원래 위치(0)로 복귀 */
+        opacity: 1; /* 투명도 1로 만듦 */
     }
     
     /* 💡 집중 모드 시: ToDo List 배경색을 설정 패널과 통일 (다크 솔리드) */
