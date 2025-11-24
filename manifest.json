@@ -5,32 +5,39 @@
   "description": "목표에 가까워지고 싶은 사람이 사용하는 집중력 향상에 꼭 필요한 익스텐션",
   
   "action": {
+    "default_title": "집중 모드",
     "default_popup": "popup/newtab.html"
   },
   
   "chrome_url_overrides": {
-    "newtab": "newtab.html" 
+    "newtab": "popup/newtab.html"
   },
   
   "permissions": [
     "storage", 
     "tabs", 
-    "webRequest", 
-    "webRequestBlocking" 
+    "webNavigation"
   ],
   
   "host_permissions": [
     "https://suggestqueries.google.com/",
-    "https://www.google.com/"
+    "https://www.google.com/",
+    "*://*/*"
   ],
   
   "background": {
-    "service_worker": "background.js" 
+    "service_worker": "background.js"
   },
   
   "web_accessible_resources": [
     {
-      "resources": ["warning.html", "warning.js", "newtab.html", "newtab.js", "newtab.css"],
+      "resources": [
+        "popup/warning.html", 
+        "popup/warning.js", 
+        "popup/newtab.html", 
+        "popup/newtab.js", 
+        "popup/newtab.css"
+      ],
       "matches": ["<all_urls>"]
     }
   ]

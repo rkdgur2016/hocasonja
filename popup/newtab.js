@@ -155,6 +155,7 @@ function updateTimeControlsState() {
 
 // --- 설정 로드 및 저장 ---
 function loadSettings() {
+    
     // 1. Focus Mode Settings
     // chrome.storage에서 실제 집중 모드 상태를 가져옵니다.
     chrome.storage.local.get([FOCUS_MODE_KEY], function(data) {
