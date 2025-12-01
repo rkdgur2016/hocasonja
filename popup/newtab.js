@@ -224,14 +224,6 @@ function debounce(func, delay) {
     };
 }
 
-
-// --- URL 차단 기능 (Focus Blocker) 제거됨 ---
-/*
-    **이 섹션은 background.js로 이동되었습니다.**
-    (getHostname, isUrlAllowed, showBlocker, hideBlocker 관련 로직 제거)
-*/
-
-
 // --- 검색 기능 (자동 완성 포함) ---
 function setupSearch() {
     const searchForm = document.getElementById('search-form');
