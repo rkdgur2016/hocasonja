@@ -224,6 +224,7 @@ function debounce(func, delay) {
     };
 }
 
+
 // --- 검색 기능 (자동 완성 포함) ---
 function setupSearch() {
     const searchForm = document.getElementById('search-form');
@@ -770,28 +771,56 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => todoContainer.style.display = 'none', 300);
     });
     
-    // Settings Panel Toggle
+    // 💡 설정 패널을 여는 함수
+    function openSettingsPanel() {
+        // 이미 열려있다면 아무것도 하지 않음
+        if (settingsPanel.classList.contains('open')) {
+            return; 
+        }
+        // 패널 열기 로직
+        loadAccessibleUrls(); 
+        settingsPanel.style.display = 'block'; // 먼저 보이게 설정
+        // 다음 틱에 transform 적용하여 애니메이션 실행
+        setTimeout(() => settingsPanel.classList.add('open'), 10); 
+        loadSettings(); 
+    }
+    
+    // 세팅 패널 닫는 함수
+    function closeSettingsPanel() {
+        // 패널이 열려 있을 때만 닫기 동작을 수행하도록 조건을 추가하는 것이 좋습니다.
+        if (settingsPanel.classList.contains('open')) {
+            settingsPanel.classList.remove('open');
+            // 애니메이션 완료 후 display: none 처리
+            setTimeout(() => settingsPanel.style.display = 'none', 300);
+        }
+    }
+
     settingsButton.addEventListener('click', () => {
         const isOpen = settingsPanel.classList.contains('open');
         
         if (!isOpen) {
-            loadAccessibleUrls(); 
-            settingsPanel.style.display = 'block'; // 먼저 보이게 설정
-            // 다음 틱에 transform 적용
-            setTimeout(() => settingsPanel.classList.add('open'), 10); 
-            loadSettings(); 
+            openSettingsPanel(); // 열기 함수 호출
         } else {
-            settingsPanel.classList.remove('open');
-            // 애니메이션 완료 후 display: none 처리
-            setTimeout(() => settingsPanel.style.display = 'none', 300); 
+            closeSettingsPanel(); // 닫기 함수 호출
         }
     });
 
-    // Settings Panel Close
-    closeSettingsButton.addEventListener('click', () => {
-        settingsPanel.classList.remove('open');
-        setTimeout(() => settingsPanel.style.display = 'none', 300);
-    });
+    // 2. Settings Panel Close (닫기 버튼)
+    closeSettingsButton.addEventListener('click', closeSettingsPanel);
+
+    // 3. ESC Key Down (ESC 키)
+    document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' || event.keyCode === 27) { 
+        
+        const isOpen = settingsPanel.classList.contains('open');
+
+        if (isOpen) {
+            closeSettingsPanel(); 
+        } else {
+            openSettingsPanel();
+        }
+    }
+});
     
     // Focus Mode 이벤트 리스너: 설정 변경 시 저장
     if (focusToggle && scheduleToggle) {
