@@ -1,0 +1,132 @@
+:root {
+    --primary-color: #6366f1; /* Tailwind CSS - Indigo 500 (주요 버튼 색상) */
+    --secondary-color: #4f46e5; /* Tailwind CSS - Indigo 600 (호버 색상) */
+    --background-color: #1e1e1e; /* VS Code, Dark IDE와 유사한 어두운 배경 */
+    --text-color: #f0f0f0; /* 밝은 텍스트 */
+    --border-color: #333; /* 구분선 및 경계선 */
+    --success-color: #10b981; /* Tailwind CSS - Emerald 500 (성공 메시지) */
+    --error-color: #ef4444; /* Tailwind CSS - Red 500 (오류 메시지) */
+}
+
+/* 1. 전체 페이지 스타일 */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    padding: 20px;
+    margin: 0;
+    min-width: 300px;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* 2. 제목 (h1) */
+h1 {
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    width: 100%;
+    text-align: center;
+    font-size: 1.5em;
+}
+
+/* 3. URL 표시 영역 */
+#url_display {
+    background-color: #2a2a2a;
+    padding: 10px 15px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    word-break: break-all;
+    text-align: center;
+    width: 90%;
+    margin-bottom: 15px;
+    font-size: 0.95em;
+    font-weight: bold;
+}
+
+/* 4. 버튼 스타일 */
+#add_url_button {
+    background-color: var(--primary-color);
+    color: var(--text-color);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 600;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    width: 90%;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+#add_url_button:hover {
+    background-color: var(--secondary-color);
+}
+
+#add_url_button:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* 5. 메시지 박스 스타일 */
+#message_box {
+    margin-top: 15px;
+    padding: 8px 15px;
+    border-radius: 4px;
+    text-align: center;
+    font-weight: 500;
+    min-height: 20px; /* 메시지가 없을 때 공간 확보 */
+}
+
+/* JavaScript에서 동적으로 적용할 수 있는 상태 스타일 */
+.message-success {
+    color: var(--success-color) !important;
+    background-color: rgba(16, 185, 129, 0.1); /* 성공 배경 (투명한 에메랄드) */
+    border: 1px solid var(--success-color);
+}
+
+.message-error {
+    color: var(--error-color) !important;
+    background-color: rgba(239, 68, 68, 0.1); /* 오류 배경 (투명한 빨간색) */
+    border: 1px solid var(--error-color);
+}
+
+/* 6. 목록 스타일 (이전 옵션 페이지에서 사용된 경우) */
+#allowedUrlsList {
+    list-style: none;
+    padding: 0;
+    width: 90%;
+    margin-top: 20px;
+}
+
+#allowedUrlsList li {
+    background-color: #2a2a2a;
+    padding: 8px 15px;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    border-left: 3px solid var(--primary-color);
+    font-size: 0.9em;
+}
+
+@keyframes pop {
+    0% { transform: scale(0.8); opacity: 0; }
+    50% { transform: scale(1.05); opacity: 1; }
+    100% { transform: scale(1); }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-5px); }
+    40%, 80% { transform: translateX(5px); }
+}
+
+.animate-pop {
+    animation: pop 0.3s ease-out forwards;
+}
+
+.animate-shake {
+    animation: shake 0.4s ease-in-out;
+}

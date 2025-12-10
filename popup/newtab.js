@@ -1,18 +1,21 @@
 // --- 전역 상수 및 키 ---
 const TODO_STORAGE_KEY = 'customNewTabTodos';
 const GOAL_STORAGE_KEY = 'customNewTabGoal';
-const ACCESSIBLE_URLS_KEY = 'customNewTabAccessibleUrls'; 
+const ACCESSIBLE_URLS_KEY = 'customNewTabAccessibleUrls';
 const LAST_RESET_DATE_KEY = 'todoLastResetDate';
 const FOCUS_MODE_KEY = 'isFocusModeOn';
 const FOCUS_START_TIME_KEY = 'focusStartTime';
 const FOCUS_END_TIME_KEY = 'focusEndTime';
-const FOCUS_SCHEDULE_TOGGLE_KEY = 'isFocusScheduleOn'; 
+const FOCUS_SCHEDULE_TOGGLE_KEY = 'isFocusScheduleOn';
 const MAX_URLS = 10; // 💡 최대 URL 개수 제한
 const MAX_TODOS = 10; // 💡 최대 할 일 개수 제한
 
+// 🚨 [수정] Date() 객체 오류 회피를 위한 전역 변수
+let lastKnownTimeStr = ''; 
+
 // --- 시간 및 날짜 기능 (수정됨: 집중 모드 스케줄링 추가) ---
 function updateTime() {
-    const now = new Date();
+    const now = new Date(Date.now());
     
     const year = now.getFullYear();
     const month = now.getMonth() + 1;
@@ -24,15 +27,17 @@ function updateTime() {
     const hours = now.getHours().toString().padStart(2, '0');
     const minutes = now.getMinutes().toString().padStart(2, '0');
     const seconds = now.getSeconds().toString().padStart(2, '0');
-    const currentTimeStr = `${hours}:${minutes}`;
+    
+    // 🚨 [수정] 전역 변수에 현재 시간을 안전하게 저장합니다.
+    lastKnownTimeStr = `${hours}:${minutes}`; 
 
     document.getElementById('time').textContent = `${hours}:${minutes}:${seconds}`;
 
     if (hours === '00' && minutes === '00' && seconds === '00') {
         checkAndResetTodos(dateText);
     }
-    // 매 초마다 스케줄 검사
-    checkFocusModeSchedule(currentTimeStr); 
+    // 매 초마다 스케줄 검사 (안전한 전역 변수 사용)
+    checkFocusModeSchedule(lastKnownTimeStr); 
 }
 
 function parseTime(timeStr) {
@@ -62,14 +67,12 @@ function isTimeBetween(startTimeStr, endTimeStr, currentTimeStr) {
  */
 function checkFocusModeSchedule(currentTimeStr) {
     const manualToggle = document.getElementById('focus-mode-toggle');
-    // 로컬 스토리지에서 상태를 읽어옵니다. (loadSettings에서 UI는 동기화됨)
     const isScheduleEnabled = localStorage.getItem(FOCUS_SCHEDULE_TOGGLE_KEY) === 'on'; 
     
-    // chrome.storage 사용으로 변경 (background.js와 통일)
     chrome.storage.local.get([FOCUS_MODE_KEY], function(data) {
         const isFocusModeOn = data[FOCUS_MODE_KEY] === 'on';
 
-        if (!manualToggle) return;
+        if (!manualToggle || !currentTimeStr) return; // currentTimeStr이 없으면 검사 불가
 
         if (isScheduleEnabled) {
             // --- 1. 자동 스케줄 모드 (Schedule ON) ---
@@ -82,12 +85,12 @@ function checkFocusModeSchedule(currentTimeStr) {
                 // 현재 시간이 스케줄 구간이면 ON으로 설정
                 if (isActiveTime) {
                     if (!isFocusModeOn) {
-                        setFocusModeState(true, false); // 스케줄에 의한 ON
+                        setFocusModeState(true, false); // 스케줄에 의한 ON (수동 토글 UI는 업데이트 하지 않음)
                     }
                 } else {
                     // 현재 시간이 스케줄 구간이 아니면 OFF로 설정
                     if (isFocusModeOn) {
-                        setFocusModeState(false, false); // 스케줄에 의한 OFF
+                        setFocusModeState(false, false); // 스케줄에 의한 OFF (수동 토글 UI는 업데이트 하지 않음)
                     }
                 }
             }
@@ -112,10 +115,10 @@ function setFocusModeState(state, updateManualToggle) {
     
     if (state) {
         body.classList.add('focus-mode');
-        indicator.style.display = 'block';
+        if (indicator) indicator.style.display = 'block';
     } else {
         body.classList.remove('focus-mode');
-        indicator.style.display = 'none';
+        if (indicator) indicator.style.display = 'none';
     }
     
     // 수동 토글 UI 업데이트: 
@@ -171,26 +174,55 @@ function loadSettings() {
         const endInput = document.getElementById('focus-end-time');
 
         // 초기 로드 시 로컬 상태 반영
-        if (manualToggle) manualToggle.checked = isFocusOn; 
+        // 스케줄 OFF일 때만 수동 토글 상태를 로드된 isFocusOn 값으로 설정해야 합니다.
+        if (manualToggle && !isScheduleOn) manualToggle.checked = isFocusOn; 
         if (scheduleToggle) scheduleToggle.checked = isScheduleOn; 
         if (startInput) startInput.value = startTime;
         if (endInput) endInput.value = endTime;
 
         // UI 초기 상태 반영
+        // 스케줄 OFF일 때만 수동 토글 상태를 기준으로 setFocusModeState를 호출합니다.
         setFocusModeState(isFocusOn, true); 
         
         updateTimeControlsState(); 
+        
+        // 스케줄 모드가 켜져 있다면, 로드 직후 현재 시간을 기준으로 상태를 업데이트합니다.
+        if(isScheduleOn && lastKnownTimeStr) {
+            checkFocusModeSchedule(lastKnownTimeStr);
+        }
     });
 }
 
+/**
+ * 포커스 모드 설정을 저장하고 즉시 적용합니다.
+ */
 function saveFocusSettings() {
+    // 1. 각 요소를 명시적으로 가져오고, 가져오지 못하면 즉시 종료 (최강 방어 로직)
     const manualToggle = document.getElementById('focus-mode-toggle');
-    const scheduleToggle = document.getElementById('focus-schedule-toggle'); 
-    const startInput = document.getElementById('focus-start-time');
-    const endInput = document.getElementById('focus-end-time');
+    if (!manualToggle) {
+        console.error("Missing focus-mode-toggle");
+        return;
+    }
     
-    if (!manualToggle || !scheduleToggle || !startInput || !endInput) return; 
+    const scheduleToggle = document.getElementById('focus-schedule-toggle'); 
+    if (!scheduleToggle) {
+        console.error("Missing focus-schedule-toggle");
+        return;
+    }
+    
+    const startInput = document.getElementById('focus-start-time');
+    if (!startInput) {
+        console.error("Missing focus-start-time");
+        return;
+    }
 
+    const endInput = document.getElementById('focus-end-time');
+    if (!endInput) {
+        console.error("Missing focus-end-time");
+        return;
+    }
+
+    // 2. 이제 변수가 모두 유효한 DOM 요소임을 확신하고 'checked'에 접근합니다.
     const isManualOn = manualToggle.checked;
     const isScheduleOn = scheduleToggle.checked;
     
@@ -202,15 +234,19 @@ function saveFocusSettings() {
         // 스케줄이 꺼져 있다면, 수동 토글의 상태를 최종 상태로 저장하고 즉시 적용합니다.
         setFocusModeState(isManualOn, true); 
     } else {
-        // 스케줄이 켜져 있다면, 수동 토글 상태만 저장하고, 실제 상태는 스케줄에 맡깁니다.
-        // 스케줄 ON일 때 saveFocusSettings가 호출되면, 즉시 스케줄 검사를 다시 수행하여 반영
-        const now = new Date();
-        const hours = now.getHours().getHours().toString().padStart(2, '0');
-        const minutes = now.getMinutes().toString().padStart(2, '0');
-        checkFocusModeSchedule(`${hours}:${minutes}`);
+        // 스케줄 ON 로직
+        
+        // new Date() 오류를 해결하기 위해 lastKnownTimeStr 사용
+        if (lastKnownTimeStr) {
+             checkFocusModeSchedule(lastKnownTimeStr);
+        } else {
+             // 안전을 위해 updateTime을 강제 실행
+             updateTime(); 
+             checkFocusModeSchedule(lastKnownTimeStr);
+        }
     }
 
-    updateTimeControlsState(); 
+    updateTimeControlsState();
 }
 
 // --- Helper Functions ---
@@ -332,7 +368,7 @@ function setupSearch() {
                 targetUrl = 'https://' + targetUrl;
             }
             
-            // 💡 [수정] URL 차단 로직 제거: 이제 background.js가 웹 요청을 가로챕니다.
+            // 💡 URL 차단 로직 제거: 이제 background.js가 웹 요청을 가로챕니다.
             window.location.href = targetUrl; 
         } else {
             // It's a search term, submit the form normally
@@ -361,10 +397,12 @@ function loadGoal() {
     const goalTextElement = document.getElementById('goal-text');
     const savedGoal = localStorage.getItem(GOAL_STORAGE_KEY);
     
+    const defaultGoal = "🔥 만약 1년 안에 1억을 벌지 못했을 때 당신이 죽는다면 어떤 일을 시작할건가요? 🔥";
+
     if (savedGoal) {
         goalTextElement.textContent = savedGoal;
     } else {
-        goalTextElement.textContent = "🔥 만약 1년 안에 1억을 벌지 못했을 때 당신이 죽는다면 어떤 일을 시작할건가요? 🔥";
+        goalTextElement.textContent = defaultGoal;
     }
 
     goalTextElement.addEventListener('click', () => {
@@ -372,14 +410,15 @@ function loadGoal() {
         const input = document.createElement('input');
         
         input.type = 'text';
-        input.value = (currentText === "🔥 만약 1년 안에 1억을 벌지 못했을 때 당신이 죽는다면 어떤 일을 시작할건가요? 🔥") ? "" : currentText;
+        // 기본 문구일 경우 입력 필드는 비워둡니다.
+        input.value = (currentText === defaultGoal) ? "" : currentText; 
         input.id = 'goal-input-editor';
         
         goalTextElement.parentNode.replaceChild(input, goalTextElement);
         input.focus();
 
         const saveGoal = () => {
-            const newGoal = input.value.trim() || " 🔥만약 1년 안에 1억을 벌지 못했을 때 당신이 죽는다면 어떤 일을 시작할건가요? 🔥";
+            const newGoal = input.value.trim() || defaultGoal;
             localStorage.setItem(GOAL_STORAGE_KEY, newGoal);
             goalTextElement.textContent = newGoal;
             input.parentNode.replaceChild(goalTextElement, input);
@@ -421,7 +460,7 @@ function renderUserShortcuts() {
             a.innerHTML = '🔗';
         }
         
-        // 💡 [수정] 바로가기 아이콘 클릭 시 URL 검사 로직 제거: 이제 background.js가 웹 요청을 가로챕니다.
+        // 💡 바로가기 아이콘 클릭 시 URL 검사 로직 제거: background.js가 웹 요청을 가로챕니다.
         a.addEventListener('click', (e) => {
             e.preventDefault();
             window.location.href = url;
@@ -439,23 +478,28 @@ function addAccessibleUrl(newUrl) {
     const urlInput = document.getElementById('url-input');
     const urlWarning = document.getElementById('url-limit-warning');
     
-    // 💡 제한 초과 시 경고 표시 
-    if (urls.length >= MAX_URLS) {
-        urlWarning.classList.add('active'); // 경고 문구 표시
-        urlInput.classList.add('shake'); // 흔들림 애니메이션 시작
-        setTimeout(() => urlInput.classList.remove('shake'), 500); // 애니메이션 후 클래스 제거
-    }
     
-    if (!newUrl.startsWith('http://') && !newUrl.startsWith('https://')) {
-        newUrl = 'https://' + newUrl;
-    }
+    // 🚨 [수정] newUrl을 저장 전에 가공합니다.
+    const processedUrl = processUrl(newUrl); // newtab.js에 processUrl 함수가 필요함
     
-    if (urls.includes(newUrl)) {
-        alert("이미 등록된 URL입니다.");
+    if (urls.includes(processedUrl)) { // 🚨 가공된 형태로 중복 확인
+        alert("이미 등록된 도메인입니다.");
         return;
     }
 
-    urls.push(newUrl);
+    // 💡 제한 초과 시 경고 표시 
+    if (urls.length >= MAX_URLS) {
+        if (urlWarning) {
+            urlWarning.classList.add('active'); // 경고 문구 표시
+            if (urlInput) {
+                urlInput.classList.add('shake'); // 흔들림 애니메이션 시작
+                setTimeout(() => urlInput.classList.remove('shake'), 500); // 애니메이션 후 클래스 제거
+            }
+        }
+        return; // 추가하지 않고 함수 종료
+    }
+    
+    urls.push(processedUrl);
     
     // chrome.storage와 localStorage 동기화 (Background.js가 chrome.storage를 감시)
     localStorage.setItem(ACCESSIBLE_URLS_KEY, JSON.stringify(urls));
@@ -463,6 +507,23 @@ function addAccessibleUrl(newUrl) {
     
     loadAccessibleUrls();
     renderUserShortcuts(); 
+}
+
+function processUrl(urlString) {
+    try {
+        const url = new URL(urlString);
+        let base = `${url.protocol}//${url.host}`;
+        if (!base.endsWith('/')) {
+            base += '/';
+        }
+        return base; 
+    } catch (e) {
+        let simpleBase = urlString.split(/[?#]/)[0];
+        if (!simpleBase.endsWith('/')) {
+            simpleBase += '/';
+        }
+        return simpleBase;
+    }
 }
 
 function updateAccessibleUrl(oldUrl, newUrl) {
@@ -647,10 +708,16 @@ function loadTodos() {
 function addTodo(todoText) {
     const todos = JSON.parse(localStorage.getItem(TODO_STORAGE_KEY) || '[]');
     const todoWarning = document.getElementById('todo-limit-warning');
+    const todoInput = document.getElementById('todo-input'); // 흔들림을 위해 참조 추가
     
-    // 💡 제한 초과 시 경고 표시 (제한은 해제)
+    // 💡 제한 초과 시 추가하지 않고 경고 표시
     if (todos.length >= MAX_TODOS) {
         if(todoWarning) todoWarning.classList.add('active'); // 경고 문구 표시
+        if (todoInput) {
+             todoInput.classList.add('shake'); // 흔들림 애니메이션 시작
+             setTimeout(() => todoInput.classList.remove('shake'), 500); // 애니메이션 후 클래스 제거
+        }
+        return;
     }
     
     todos.push({ text: todoText, completed: false });
@@ -712,12 +779,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const scheduleToggle = document.getElementById('focus-schedule-toggle'); 
     const focusStart = document.getElementById('focus-start-time');
     const focusEnd = document.getElementById('focus-end-time');
-
-    // 💡 [제거됨] Blocker Action Listeners는 warning.js로 이동했습니다.
-    /*
-    document.getElementById('blocker-confirm-yes').addEventListener('click', ...);
-    document.getElementById('blocker-confirm-no').addEventListener('click', ...);
-    */
 
 
     // --- 이벤트 리스너 ---
@@ -810,11 +871,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 3. ESC Key Down (ESC 키)
     document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' || event.keyCode === 27) { 
+    // 💡 인풋이나 에디터가 활성화되어 있을 때는 ESC가 폼을 닫는 동작을 막기 위해 제외
+    const isInputActive = document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA';
         
-        const isOpen = settingsPanel.classList.contains('open');
+    if ((event.key === 'Escape' || event.keyCode === 27) && !isInputActive) { 
+        
+        const isSettingsOpen = settingsPanel.classList.contains('open');
 
-        if (isOpen) {
+        if (isSettingsOpen) {
             closeSettingsPanel(); 
         } else {
             openSettingsPanel();

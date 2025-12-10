@@ -6,8 +6,7 @@
   
   "action": {
     "default_title": "집중 모드",
-    "default_popup": "popup/newtab.html",
-    "options_page": "options/options.html"
+    "default_popup": "options/options.html"
   },
   
   "chrome_url_overrides": {
@@ -15,9 +14,13 @@
   },
   
   "permissions": [
+    "activeTab",
     "storage", 
     "tabs", 
-    "webNavigation"
+    "webNavigation",
+    "webRequest",
+    "declarativeNetRequest"
+
   ],
   
   "host_permissions": [

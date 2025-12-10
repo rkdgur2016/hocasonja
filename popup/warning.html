@@ -6,36 +6,43 @@
     <title>집중 모드 경고</title>
     <link rel="stylesheet" href="newtab.css"/> 
     <style>
-        /* 경고 페이지의 배경을 채우기 위한 스타일 */
         body {
-            background: linear-gradient(135deg, #1e3a8a 0%, #0c1c4b 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden; /* 스크롤 방지 */
-        }
-        
-        /* newtab.css의 .blocker-content를 중앙에 직접 배치 */
-        .blocker-content {
-            background-color: rgba(255, 255, 255, 0.1);
-            padding: 40px;
-            border-radius: 15px;
-            text-align: center;
-            max-width: 500px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            border: 2px solid #EF4444;
-            animation: fadeIn 0.3s ease-out;
-            color: white; /* 텍스트 색상 보장 */
-        }
-        /* 추가적인 중앙 배치 스타일 */
-        .page-center {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
+    background: linear-gradient(135deg, #1e3a8a 0%, #0c1c4b 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    overflow: hidden; /* 스크롤 방지 */
+}
+
+/* newtab.css의 .blocker-content를 중앙에 직접 배치 */
+.blocker-content {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 40px;
+    border-radius: 15px;
+    text-align: center;
+    max-width: 500px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    border: 2px solid #EF4444;
+    
+    /* 애니메이션 속성 유지 */
+    animation: fadeIn 0.3s ease-out; 
+    
+    color: white; /* 텍스트 색상 보장 */
+}
+
+/* ✨ fadeIn 애니메이션 keyframes 정의 추가 ✨ */
+@keyframes fadeIn {
+    from {
+        opacity: 0; /* 시작 시 투명 */
+        transform: translateY(20px); /* 시작 시 중앙보다 20px 아래에 위치 */
+    }
+    to {
+        opacity: 1; /* 종료 시 불투명 */
+        transform: translateY(0); /* 중앙 위치로 이동 */
+    }
+}
     </style>
 </head>
 <body>
