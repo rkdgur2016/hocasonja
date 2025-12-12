@@ -1,26 +1,22 @@
 // warning.js
+const GOAL_STORAGE_KEY = 'customNewTabGoal';
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. URL 파라미터에서 원래 가려던 URL (target)을 가져옴
     const urlParams = new URLSearchParams(window.location.search);
     const targetUrl = urlParams.get('target');
+    const savedGoal = localStorage.getItem(GOAL_STORAGE_KEY);
     
     // 2. HTML 요소 가져오기
     const blockedUrlDisplay = document.getElementById('blocked-url-display');
     const confirmYes = document.getElementById('confirm-yes'); // '예, 접근합니다' 버튼 ID
     const confirmNo = document.getElementById('confirm-no');  // '아니오, 돌아갑니다' 버튼 ID
 
-    // 필수 요소가 없으면 오류 로그를 남기고 종료 (디버깅 목적)
-    if (!confirmYes || !confirmNo) {
-        console.error("Critical Error: 'confirm-yes' or 'confirm-no' button ID not found in warning.html.");
-        return; 
-    }
-
     // 3. 화면에 차단된 URL 표시
     if (targetUrl && blockedUrlDisplay) {
-        blockedUrlDisplay.textContent = decodeURIComponent(targetUrl);
+        blockedUrlDisplay.textContent = decodeURIComponent(savedGoal);
     } else if (blockedUrlDisplay) {
-        blockedUrlDisplay.textContent = '알 수 없는 URL';
+        blockedUrlDisplay.textContent = '설정한 목표가 존재하지 않습니다.';
     }
 
     // 4. [예, 접근합니다] 버튼 클릭 시 (브라우저 종료 시까지 도메인 허용)
@@ -35,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 urlToAllow = urlObj.origin + '/'; 
             } catch (e) {
                 // 2. 파싱 실패 시 (예: 'google.com'만 입력된 경우)
-                console.warn("URL parsing failed, attempting simple host extraction:", e);
+                console.warn("URL 파싱에 실패했습니다.", e);
                 
                 // 임시로 http://를 붙여서 호스트네임만 추출하여 임시 허용 요청
                 try {

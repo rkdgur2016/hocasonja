@@ -421,7 +421,7 @@ function loadGoal() {
             const newGoal = input.value.trim() || defaultGoal;
             localStorage.setItem(GOAL_STORAGE_KEY, newGoal);
             goalTextElement.textContent = newGoal;
-            input.parentNode.replaceChild(goalTextElement, input);
+            oldChild.replaceWith(newChild);
         };
         
         input.addEventListener('keypress', (e) => {

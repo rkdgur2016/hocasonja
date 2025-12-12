@@ -1,8 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "집중이라고 이 새끼야.",
+  "name": "Pacemaker",
   "version": "1.0",
-  "description": "목표에 가까워지고 싶은 사람이 사용하는 집중력 향상에 꼭 필요한 익스텐션",
+  "description": "당신의 간절함이 열매를 맺을 때까지 방향을 잡아주겠습니다.",
+  "icons": {
+   "48": "images/pacemaker 48x48.png",
+   "128": "images/pacemaker 128x128.png"
+ },
   
   "action": {
     "default_title": "집중 모드",
