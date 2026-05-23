@@ -10,51 +10,73 @@
 <body class="">
 
     <div class="focus-mode-indicator">
-        🔥 집중 모드 활성화 중! 허용 목록 외 접근은 차단됩니다. 🔥
+        🔥 집중 모드 활성화 중! 목표에 집중하세요. 🔥
     </div>
 
     <div class="container">
         <div class="time-goal-area">
             <div id="date"></div>
             <div id="time">00:00:00</div>
-            <p id="goal-text">🔥 만약 1년 안에 1억을 벌지 못했을 때 당신이 죽는다면 어떤 일을 시작할건가요?🔥</p>
-            <p id="information-text">이곳에 당신의 목표를 적어두고 상기해보세요.</p>
+            <p id="goal-text" title="클릭하여 목표 수정">🔥 당신의 목표를 설정하고 매일 상기하세요 🔥</p>
+            <p id="information-text">Pacemaker가 당신의 성장을 돕습니다.</p>
+        </div>
+
+        <!-- 실시간 정보 영역 (환율, 날씨, 유가) -->
+        <div class="top-info-area">
+            <div id="exchange-rate" class="info-card-seamless" title="환율 (KRW)"></div>
+            <div id="weather-info" class="info-card-seamless weather-slider-container" title="날씨 (최저/최고 - 현재 - 강수확률)">
+                <!-- 날씨 슬라이더가 여기에 위치 -->
+            </div>
+            <div id="oil-prices" class="info-card-seamless" title="유가 (휘/경)"></div>
         </div>
 
         <div class="search-shortcuts-area">
-            <form id="search-form" action="https://www.google.com/search" method="get" target="_self">
-                <input type="text" id="search-input" name="q" placeholder="구글 검색 또는 URL 입력" autocomplete="off" class="input-field">
-            </form>
-            <div id="autocomplete-results" class="autocomplete-results"></div>
+            <div class="search-bar-wrapper">
+                <div class="search-engine-selector">
+                    <button type="button" id="google-engine-btn" class="engine-select-btn active" title="Google Search">G</button>
+                    <button type="button" id="naver-engine-btn" class="engine-select-btn" title="Naver Search">N</button>
+                </div>
+                <form id="search-form" action="https://www.google.com/search" method="get" target="_self">
+                    <input type="text" id="search-input" name="q" placeholder="구글 검색 또는 URL 입력" autocomplete="off" class="input-field">
+                </form>
+                <div id="autocomplete-results" class="autocomplete-results"></div>
+            </div>
             
             <div id="user-shortcuts-list" class="shortcuts-list">
-                </div>
+                <!-- 바로가기 아이콘들이 여기에 위치 -->
+            </div>
         </div>
+
+        <!-- 주식 정보 영역 (리스트 형식) -->
+        <div class="stock-info-area">
+            <div id="stock-prices" class="stock-list-container">
+                <!-- 주식 항목들이 리스트 형태로 여기에 추가됨 -->
+            </div>
+        </div>
+
         <div class="utility-buttons">
-            <button id="todo-toggle-btn" class="utility-btn" title="할 일 목록 열기/닫기">
+            <button id="todo-toggle-btn" class="utility-btn" title="할 일 목록">
                 <i class="fa-solid fa-list-check"></i>
             </button>
             <button id="settings-btn" class="utility-btn" title="설정">
                 <i class="fa-solid fa-gear"></i>
             </button>
         </div>
+
         <div id="todo-list-container" class="todo-list-container" style="display:none;">
             <div class="todo-header">
-                <h3 style="color: #FFC107">오늘의 할 일</h3>
-                <button id="close-todoList-btn" class="close-btn" title="닫기">&times;</button>
+                <h3>오늘의 할 일</h3>
+                <button id="close-todoList-btn" class="close-btn">&times;</button>
             </div>
             
-            <form id="add-todo-form" class="flex-group mb-20">
-                <input type="text" id="todo-input" placeholder="새로운 할 일" required class="input-field-dark">
-                <button type="submit" class="submit_btn">추가</button>
+            <form id="add-todo-form" class="flex-group">
+                <input type="text" id="todo-input" placeholder="새로운 할 일" required>
+                <button type="submit" class="add-btn">추가</button>
             </form>
-            
-            <div id="todo-limit-warning" class="limit-warning todo-warning">
-                목표 설정이 너무 많진 않을까요? 10개를 초과했습니다.
-            </div>
 
-            <ul id="todo-list">
-                </ul>
+            <ul id="todo-list"></ul>
+            
+            
         </div>
     </div>
     
@@ -102,11 +124,27 @@
                     <input type="url" id="url-input" placeholder="URL 입력 (예: google.com)" required class="input-field-dark">
                     <button type="submit" class="submit_btn">추가</button>
                 </form>
-                <div id="url-limit-warning" class="limit-warning url-warning">
-                    목표를 위한 필수적인 페이지가 맞을까요? 10개를 초과했습니다.
-                </div>
                 <div id="accessible-urls-list" class="scrollable-content">
                     </div>
+            </div>
+
+            <div class="setting-section">
+                <div class="setting-title">관심 주식 관리</div>
+                <p class="setting-desc">종목코드를 추가하고 리스트에서 매수가를 설정하세요.</p>
+                <form id="add-stock-form" class="flex-group">
+                    <input type="text" id="stock-symbol-input" placeholder="심볼 (예: AAPL)" required>
+                    <button type="submit" class="submit_btn">추가</button>
+                </form>
+                <div id="custom-stocks-list" class="scrollable-content" style="margin-bottom: 20px;">
+                    <!-- 주식 목록 동적 추가 -->
+                </div>
+
+                <div class="setting-title">기타 실시간 정보</div>
+                <p class="setting-desc">날씨 위치 (위도, 경도)</p>
+                <div class="flex-group">
+                    <input type="text" id="weather-location-input" placeholder="위도, 경도 (예: 37.5665, 126.9780)" class="input-field-dark">
+                    <button id="save-weather-btn" class="submit_btn">저장</button>
+                </div>
             </div>
         </div>
     </div>

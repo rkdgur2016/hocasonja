@@ -7,247 +7,13 @@ const FOCUS_MODE_KEY = 'isFocusModeOn';
 const FOCUS_START_TIME_KEY = 'focusStartTime';
 const FOCUS_END_TIME_KEY = 'focusEndTime';
 const FOCUS_SCHEDULE_TOGGLE_KEY = 'isFocusScheduleOn';
-const MAX_URLS = 10; // 💡 최대 URL 개수 제한
-const MAX_TODOS = 10; // 💡 최대 할 일 개수 제한
+const SEARCH_ENGINE_KEY = 'preferredSearchEngine';
+const STOCK_SYMBOLS_KEY = 'customStockSymbols';
+const WEATHER_LOCATION_KEY = 'customWeatherLocation';
+const MAX_URLS = 10; 
+const MAX_TODOS = 10; 
 
-// 🚨 [수정] Date() 객체 오류 회피를 위한 전역 변수
 let lastKnownTimeStr = ''; 
-
-// --- 시간 및 날짜 기능 (수정됨: 집중 모드 스케줄링 추가) ---
-function updateTime() {
-    const now = new Date(Date.now());
-    
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-    const day = now.getDate();
-    
-    const dateText = `${year}년 ${month}월 ${day}일`;
-    document.getElementById('date').textContent = dateText;
-    
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-    const seconds = now.getSeconds().toString().padStart(2, '0');
-    
-    // 🚨 [수정] 전역 변수에 현재 시간을 안전하게 저장합니다.
-    lastKnownTimeStr = `${hours}:${minutes}`; 
-
-    document.getElementById('time').textContent = `${hours}:${minutes}:${seconds}`;
-
-    if (hours === '00' && minutes === '00' && seconds === '00') {
-        checkAndResetTodos(dateText);
-    }
-    // 매 초마다 스케줄 검사 (안전한 전역 변수 사용)
-    checkFocusModeSchedule(lastKnownTimeStr); 
-}
-
-function parseTime(timeStr) {
-    if (!timeStr) return -1;
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    return hours * 60 + minutes;
-}
-
-function isTimeBetween(startTimeStr, endTimeStr, currentTimeStr) {
-    const start = parseTime(startTimeStr);
-    const end = parseTime(endTimeStr);
-    const current = parseTime(currentTimeStr);
-    
-    if (start === -1 || end === -1 || start === end) return false; 
-    
-    if (start < end) {
-        return current >= start && current < end; 
-    } else {
-        // 자정을 넘어가는 경우 (예: 23:00 시작, 02:00 종료)
-        return current >= start || current < end;
-    }
-}
-
-/**
- * 집중 모드 스케줄을 확인하고 상태를 업데이트합니다.
- * 스케줄이 활성화되어 있으면 수동 토글을 덮어씁니다.
- */
-function checkFocusModeSchedule(currentTimeStr) {
-    const manualToggle = document.getElementById('focus-mode-toggle');
-    const isScheduleEnabled = localStorage.getItem(FOCUS_SCHEDULE_TOGGLE_KEY) === 'on'; 
-    
-    chrome.storage.local.get([FOCUS_MODE_KEY], function(data) {
-        const isFocusModeOn = data[FOCUS_MODE_KEY] === 'on';
-
-        if (!manualToggle || !currentTimeStr) return; // currentTimeStr이 없으면 검사 불가
-
-        if (isScheduleEnabled) {
-            // --- 1. 자동 스케줄 모드 (Schedule ON) ---
-            const start = localStorage.getItem(FOCUS_START_TIME_KEY);
-            const end = localStorage.getItem(FOCUS_END_TIME_KEY);
-            
-            if (start && end) {
-                const isActiveTime = isTimeBetween(start, end, currentTimeStr);
-                
-                // 현재 시간이 스케줄 구간이면 ON으로 설정
-                if (isActiveTime) {
-                    if (!isFocusModeOn) {
-                        setFocusModeState(true, false); // 스케줄에 의한 ON (수동 토글 UI는 업데이트 하지 않음)
-                    }
-                } else {
-                    // 현재 시간이 스케줄 구간이 아니면 OFF로 설정
-                    if (isFocusModeOn) {
-                        setFocusModeState(false, false); // 스케줄에 의한 OFF (수동 토글 UI는 업데이트 하지 않음)
-                    }
-                }
-            }
-        } 
-        // Note: Schedule OFF일 때는 수동 토글 상태를 loadSettings나 saveFocusSettings에서 처리
-    });
-}
-
-
-/**
- * 집중 모드 상태를 설정하고 UI를 업데이트합니다.
- * @param {boolean} state - ON/OFF 상태 (true: ON, false: OFF)
- * @param {boolean} updateManualToggle - 수동 토글 UI도 업데이트할지 여부 (스케줄 자동 작동 시 false)
- */
-function setFocusModeState(state, updateManualToggle) {
-    const body = document.body;
-    const indicator = document.querySelector('.focus-mode-indicator');
-    const manualToggle = document.getElementById('focus-mode-toggle');
-    
-    // 상태를 chrome.storage에 저장 (background.js에서 모니터링)
-    chrome.storage.local.set({ [FOCUS_MODE_KEY]: state ? 'on' : 'off' });
-    
-    if (state) {
-        body.classList.add('focus-mode');
-        if (indicator) indicator.style.display = 'block';
-    } else {
-        body.classList.remove('focus-mode');
-        if (indicator) indicator.style.display = 'none';
-    }
-    
-    // 수동 토글 UI 업데이트: 
-    if (manualToggle && updateManualToggle) {
-        manualToggle.checked = state;
-    }
-}
-
-// --- To-Do List 리셋 로직 ---
-function checkAndResetTodos(currentDate) {
-    const lastResetDate = localStorage.getItem(LAST_RESET_DATE_KEY);
-
-    if (lastResetDate !== currentDate) {
-        localStorage.removeItem(TODO_STORAGE_KEY);
-        localStorage.setItem(LAST_RESET_DATE_KEY, currentDate);
-        loadTodos();
-        console.log(`To-Do List가 ${currentDate} 자정 기준으로 리셋되었습니다.`);
-    }
-}
-
-setInterval(updateTime, 1000);
-updateTime();
-
-// 💡 스케줄 시간 입력 컨트롤의 상태를 업데이트합니다.
-function updateTimeControlsState() {
-    const scheduleToggle = document.getElementById('focus-schedule-toggle');
-    const timeControls = document.getElementById('focus-time-controls');
-    
-    if (!scheduleToggle || !timeControls) return;
-
-    if (scheduleToggle.checked) {
-        timeControls.classList.remove('disabled-controls');
-    } else {
-        timeControls.classList.add('disabled-controls');
-    }
-}
-
-// --- 설정 로드 및 저장 ---
-function loadSettings() {
-    
-    // 1. Focus Mode Settings
-    // chrome.storage에서 실제 집중 모드 상태를 가져옵니다.
-    chrome.storage.local.get([FOCUS_MODE_KEY], function(data) {
-        const isFocusOn = data[FOCUS_MODE_KEY] === 'on'; 
-        
-        const isScheduleOn = localStorage.getItem(FOCUS_SCHEDULE_TOGGLE_KEY) === 'on'; 
-        const startTime = localStorage.getItem(FOCUS_START_TIME_KEY) || '09:00';
-        const endTime = localStorage.getItem(FOCUS_END_TIME_KEY) || '17:00';
-        
-        const manualToggle = document.getElementById('focus-mode-toggle');
-        const scheduleToggle = document.getElementById('focus-schedule-toggle'); 
-        const startInput = document.getElementById('focus-start-time');
-        const endInput = document.getElementById('focus-end-time');
-
-        // 초기 로드 시 로컬 상태 반영
-        // 스케줄 OFF일 때만 수동 토글 상태를 로드된 isFocusOn 값으로 설정해야 합니다.
-        if (manualToggle && !isScheduleOn) manualToggle.checked = isFocusOn; 
-        if (scheduleToggle) scheduleToggle.checked = isScheduleOn; 
-        if (startInput) startInput.value = startTime;
-        if (endInput) endInput.value = endTime;
-
-        // UI 초기 상태 반영
-        // 스케줄 OFF일 때만 수동 토글 상태를 기준으로 setFocusModeState를 호출합니다.
-        setFocusModeState(isFocusOn, true); 
-        
-        updateTimeControlsState(); 
-        
-        // 스케줄 모드가 켜져 있다면, 로드 직후 현재 시간을 기준으로 상태를 업데이트합니다.
-        if(isScheduleOn && lastKnownTimeStr) {
-            checkFocusModeSchedule(lastKnownTimeStr);
-        }
-    });
-}
-
-/**
- * 포커스 모드 설정을 저장하고 즉시 적용합니다.
- */
-function saveFocusSettings() {
-    // 1. 각 요소를 명시적으로 가져오고, 가져오지 못하면 즉시 종료 (최강 방어 로직)
-    const manualToggle = document.getElementById('focus-mode-toggle');
-    if (!manualToggle) {
-        console.error("Missing focus-mode-toggle");
-        return;
-    }
-    
-    const scheduleToggle = document.getElementById('focus-schedule-toggle'); 
-    if (!scheduleToggle) {
-        console.error("Missing focus-schedule-toggle");
-        return;
-    }
-    
-    const startInput = document.getElementById('focus-start-time');
-    if (!startInput) {
-        console.error("Missing focus-start-time");
-        return;
-    }
-
-    const endInput = document.getElementById('focus-end-time');
-    if (!endInput) {
-        console.error("Missing focus-end-time");
-        return;
-    }
-
-    // 2. 이제 변수가 모두 유효한 DOM 요소임을 확신하고 'checked'에 접근합니다.
-    const isManualOn = manualToggle.checked;
-    const isScheduleOn = scheduleToggle.checked;
-    
-    localStorage.setItem(FOCUS_SCHEDULE_TOGGLE_KEY, isScheduleOn ? 'on' : 'off');
-    localStorage.setItem(FOCUS_START_TIME_KEY, startInput.value);
-    localStorage.setItem(FOCUS_END_TIME_KEY, endInput.value);
-    
-    if (!isScheduleOn) {
-        // 스케줄이 꺼져 있다면, 수동 토글의 상태를 최종 상태로 저장하고 즉시 적용합니다.
-        setFocusModeState(isManualOn, true); 
-    } else {
-        // 스케줄 ON 로직
-        
-        // new Date() 오류를 해결하기 위해 lastKnownTimeStr 사용
-        if (lastKnownTimeStr) {
-             checkFocusModeSchedule(lastKnownTimeStr);
-        } else {
-             // 안전을 위해 updateTime을 강제 실행
-             updateTime(); 
-             checkFocusModeSchedule(lastKnownTimeStr);
-        }
-    }
-
-    updateTimeControlsState();
-}
 
 // --- Helper Functions ---
 function debounce(func, delay) {
@@ -260,637 +26,670 @@ function debounce(func, delay) {
     };
 }
 
+function processUrl(urlString) {
+    try {
+        if (!urlString.startsWith('http://') && !urlString.startsWith('https://')) {
+            urlString = 'https://' + urlString;
+        }
+        const url = new URL(urlString);
+        let base = `${url.protocol}//${url.host}`;
+        if (!base.endsWith('/')) base += '/';
+        return base; 
+    } catch (e) {
+        let simpleBase = urlString.split(/[?#]/)[0];
+        if (!simpleBase.endsWith('/')) simpleBase += '/';
+        return simpleBase;
+    }
+}
 
-// --- 검색 기능 (자동 완성 포함) ---
+// --- 시간 및 날짜 기능 ---
+function updateTime() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
+    const weekDays = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+    const weekDay = weekDays[now.getDay()];
+    
+    const dateText = `${year}년 ${month}월 ${day}일 · ${weekDay}`;
+    const dateEl = document.getElementById('date');
+    if (dateEl) dateEl.textContent = dateText;
+    
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const seconds = now.getSeconds().toString().padStart(2, '0');
+    
+    lastKnownTimeStr = `${hours}:${minutes}`; 
+
+    const timeEl = document.getElementById('time');
+    if (timeEl) timeEl.textContent = `${hours}:${minutes}:${seconds}`;
+
+    if (hours === '00' && minutes === '00' && seconds === '00') {
+        checkAndResetTodos(dateText);
+    }
+    checkFocusModeSchedule(lastKnownTimeStr); 
+}
+
+function parseTime(timeStr) {
+    if (!timeStr) return -1;
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+}
+
+function isTimeBetween(startStr, endStr, currentStr) {
+    const start = parseTime(startStr);
+    const end = parseTime(endStr);
+    const current = parseTime(currentStr);
+    if (start === -1 || end === -1 || start === end) return false; 
+    return start < end ? (current >= start && current < end) : (current >= start || current < end);
+}
+
+function checkFocusModeSchedule(currentTimeStr) {
+    const isScheduleEnabled = localStorage.getItem(FOCUS_SCHEDULE_TOGGLE_KEY) === 'on'; 
+    if (!isScheduleEnabled || !currentTimeStr) return;
+
+    chrome.storage.local.get([FOCUS_MODE_KEY], function(data) {
+        const isFocusModeOn = data[FOCUS_MODE_KEY] === 'on';
+        const start = localStorage.getItem(FOCUS_START_TIME_KEY);
+        const end = localStorage.getItem(FOCUS_END_TIME_KEY);
+        
+        if (start && end) {
+            const isActiveTime = isTimeBetween(start, end, currentTimeStr);
+            if (isActiveTime && !isFocusModeOn) setFocusModeState(true, false);
+            else if (!isActiveTime && isFocusModeOn) setFocusModeState(false, false);
+        }
+    });
+}
+
+function setFocusModeState(state, updateManualToggle) {
+    const body = document.body;
+    const indicator = document.querySelector('.focus-mode-indicator');
+    const manualToggle = document.getElementById('focus-mode-toggle');
+    
+    chrome.storage.local.set({ [FOCUS_MODE_KEY]: state ? 'on' : 'off' });
+    
+    if (state) {
+        body.classList.add('focus-mode');
+        if (indicator) indicator.style.display = 'block';
+    } else {
+        body.classList.remove('focus-mode');
+        if (indicator) indicator.style.display = 'none';
+    }
+    
+    if (manualToggle && updateManualToggle) {
+        manualToggle.checked = state;
+    }
+}
+
+function updateTimeControlsState() {
+    const scheduleToggle = document.getElementById('focus-schedule-toggle');
+    const timeControls = document.getElementById('focus-time-controls');
+    if (!scheduleToggle || !timeControls) return;
+    if (scheduleToggle.checked) timeControls.classList.remove('disabled-controls');
+    else timeControls.classList.add('disabled-controls');
+}
+
+// --- 실시간 정보 기능 ---
+
+async function fetchExchangeRate() {
+    try {
+        const rate = 1519;
+        const exchangeRateEl = document.getElementById('exchange-rate');
+        if (exchangeRateEl) {
+            exchangeRateEl.innerHTML = `
+                <div class="info-label">환율 (USD/KRW)</div>
+                <div class="info-value"><i class="fas fa-minus trend-neutral"></i> <span>${rate.toLocaleString()}원</span></div>
+            `;
+        }
+    } catch (error) { console.error('환율 오류:', error); }
+}
+
+async function fetchWeather() {
+    try {
+        const location = localStorage.getItem(WEATHER_LOCATION_KEY) || '37.5665, 126.9780';
+        const [lat, lon] = location.split(',').map(s => s.trim());
+        const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&hourly=precipitation_probability&daily=temperature_2m_max,temperature_2m_min&timezone=Asia%2FSeoul&forecast_days=1`);
+        const data = await response.json();
+        
+        const temp = data.current.temperature_2m;
+        const maxTemp = data.daily.temperature_2m_max[0];
+        const minTemp = data.daily.temperature_2m_min[0];
+        const now = new Date();
+        const rainProb = data.hourly.precipitation_probability[now.getHours()];
+        
+        const weatherEl = document.getElementById('weather-info');
+        if (weatherEl) {
+            let icon = '<i class="fas fa-cloud-sun"></i>';
+            const code = data.current.weather_code;
+            if (code === 0) icon = '<i class="fas fa-sun" style="color: #f59e0b;"></i>';
+            else if (code >= 1 && code <= 3) icon = '<i class="fas fa-cloud-sun" style="color: #60a5fa;"></i>';
+            else if (code >= 45) icon = '<i class="fas fa-smog" style="color: #94a3b8;"></i>';
+            else if (code >= 51) icon = '<i class="fas fa-cloud-showers-heavy" style="color: #3b82f6;"></i>';
+
+            weatherEl.innerHTML = `
+                <div class="weather-slide active">
+                    <div class="info-label">기온(최저/최고)</div>
+                    <div class="info-value">${icon} <span>${minTemp}° / ${maxTemp}°</span></div>
+                </div>
+                <div class="weather-slide">
+                    <div class="info-label">현재 기온</div>
+                    <div class="info-value">${icon} <span>${temp}°C</span></div>
+                </div>
+                <div class="weather-slide">
+                    <div class="info-label">강수 확률</div>
+                    <div class="info-value"><i class="fas fa-umbrella" style="color: #3b82f6;"></i> <span>${rainProb}%</span></div>
+                </div>
+            `;
+            startWeatherSlider();
+        }
+    } catch (error) { console.error('날씨 fetch 오류:', error); }
+}
+
+function startWeatherSlider() {
+    const slides = document.querySelectorAll('.weather-slide');
+    if (slides.length === 0) return;
+    let currentSlide = 0;
+
+    if (window.weatherInterval) clearInterval(window.weatherInterval);
+    
+    window.weatherInterval = setInterval(() => {
+        slides[currentSlide].classList.remove('active');
+        currentSlide = (currentSlide + 1) % slides.length;
+        slides[currentSlide].classList.add('active');
+    }, 4000);
+}
+
+async function fetchOilPrices() {
+    try {
+        const gasPrice = 2019;
+        const dieselPrice = 2008;
+        const oilEl = document.getElementById('oil-prices');
+        if (oilEl) {
+            oilEl.innerHTML = `
+                <div class="info-label">국내 유가 (휘/경)</div>
+                <div class="info-value"><i class="fas fa-gas-pump" style="color: #10b981;"></i> <span>${gasPrice} / ${dieselPrice}</span></div>
+            `;
+        }
+    } catch (error) { console.error('유가 오류:', error); }
+}
+
+async function fetchStockPrices() {
+    let stocks = [];
+    try { 
+        const saved = localStorage.getItem(STOCK_SYMBOLS_KEY);
+        stocks = JSON.parse(saved) || []; 
+        if (typeof stocks === 'string') {
+            stocks = stocks.split(',').map(s => ({ symbol: s.trim(), purchasePrice: null }));
+        }
+    } catch(e) { stocks = [{ symbol: 'AAPL', purchasePrice: null }]; }
+    
+    const container = document.getElementById('stock-prices');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (stocks.length === 0) return;
+
+    for (const stock of stocks) {
+        try {
+            const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${stock.symbol}?interval=1d&range=1d`);
+            if (!response.ok) continue;
+            const data = await response.json();
+            if (!data.chart || !data.chart.result || data.chart.result.length === 0) continue;
+
+            const result = data.chart.result[0];
+            const meta = result.meta;
+            const currentPrice = meta.regularMarketPrice;
+            const previousClose = meta.previousClose || meta.chartPreviousClose;
+
+            let changeDisplay = '0.00';
+            let trendClass = 'trend-neutral';
+            let icon = '-';
+
+            if (currentPrice !== undefined && previousClose !== undefined && previousClose !== 0) {
+                const change = ((currentPrice - previousClose) / previousClose * 100);
+                changeDisplay = Math.abs(change).toFixed(2);
+                if (change > 0) { trendClass = 'trend-up'; icon = '▲'; }
+                else if (change < 0) { trendClass = 'trend-down'; icon = '▼'; }
+            }
+            
+            let yieldHtml = '';
+            if (stock.purchasePrice && stock.purchasePrice > 0) {
+                const yVal = ((currentPrice - stock.purchasePrice) / stock.purchasePrice * 100);
+                yieldHtml = `<span class="${yVal >= 0 ? 'trend-up' : 'trend-down'}" style="font-size: 0.8em; margin-left: 10px; font-weight: 600;">${yVal >= 0 ? '+' : ''}${yVal.toFixed(2)}%</span>`;
+            }
+
+            const stockItem = document.createElement('div');
+            stockItem.classList.add('stock-list-item');
+            stockItem.dataset.symbol = stock.symbol;
+            
+            let domainSymbol = stock.symbol.split('.')[0].toLowerCase();
+            const iconUrl = `https://www.google.com/s2/favicons?sz=64&domain_url=${domainSymbol}.com`;
+            
+            stockItem.innerHTML = `
+                <div class="stock-main-info" style="cursor: grab;">
+                    <img src="${iconUrl}" class="stock-icon-small" onerror="this.onerror=null; this.src='../images/pacemaker 48x48.png';">
+                    <span class="symbol">${stock.symbol}</span>
+                    <span class="price">${(currentPrice || 0).toLocaleString()}원</span>
+                    ${yieldHtml}
+                </div>
+                <div class="change ${trendClass}">${icon} ${changeDisplay}%</div>
+            `;
+            container.appendChild(stockItem);
+        } catch (error) { console.error(`주식(${stock.symbol}) 오류:`, error); }
+    }
+}
+
+function refreshAllInfo() {
+    fetchExchangeRate(); fetchWeather(); fetchOilPrices(); fetchStockPrices();
+}
+
+// --- 검색 기능 ---
+
+function updateSearchEngineUI(engine) {
+    const googleBtn = document.getElementById('google-engine-btn');
+    const naverBtn = document.getElementById('naver-engine-btn');
+    const searchForm = document.getElementById('search-form');
+    const searchInput = document.getElementById('search-input');
+    if (!googleBtn || !naverBtn || !searchForm || !searchInput) return;
+
+    if (engine === 'naver') {
+        naverBtn.classList.add('active'); googleBtn.classList.remove('active');
+        searchForm.action = 'https://search.naver.com/search.naver';
+        searchInput.name = 'query'; searchInput.placeholder = '네이버 검색 또는 URL 입력';
+    } else {
+        googleBtn.classList.add('active'); naverBtn.classList.remove('active');
+        searchForm.action = 'https://www.google.com/search';
+        searchInput.name = 'q'; searchInput.placeholder = '구글 검색 또는 URL 입력';
+    }
+}
+
 function setupSearch() {
     const searchForm = document.getElementById('search-form');
     const searchInput = document.getElementById('search-input');
     const autocompleteResults = document.getElementById('autocomplete-results');
-    
     const SUGGEST_URL = 'https://suggestqueries.google.com/complete/search?client=chrome&q=';
     let currentFocus = -1; 
-    
-    searchInput.focus(); 
 
     searchInput.addEventListener('input', debounce(async function() {
         const query = searchInput.value.trim();
-        if (query.length < 1) {
-            hideAutocomplete();
-            return;
-        }
-
+        if (query.length < 1) { hideAutocomplete(); return; }
         try {
             const response = await fetch(SUGGEST_URL + encodeURIComponent(query));
             const text = await response.text();
-            
-            // JSONP 스타일의 응답을 JSON으로 파싱
             const jsonText = text.substring(text.indexOf('[') - 1, text.lastIndexOf(']') + 1).trim();
             const data = JSON.parse(jsonText);
-            
-            const suggestions = data[1].slice(0, 8); 
-            
-            displayAutocomplete(suggestions);
+            displayAutocomplete(data[1].slice(0, 8));
+        } catch (e) { hideAutocomplete(); }
+    }, 200));
 
-        } catch (error) {
-            console.error('Autocomplete fetch error:', error);
-            hideAutocomplete();
-        }
-    }, 200)); 
-    
     function displayAutocomplete(suggestions) {
-        autocompleteResults.innerHTML = '';
-        currentFocus = -1;
-
-        if (suggestions.length === 0) {
-            hideAutocomplete();
-            return;
-        }
-
+        autocompleteResults.innerHTML = ''; currentFocus = -1;
+        if (suggestions.length === 0) { hideAutocomplete(); return; }
+        const shortcutsList = document.getElementById('user-shortcuts-list');
+        if (shortcutsList) shortcutsList.style.display = 'none';
         suggestions.forEach(suggestion => {
             const item = document.createElement('div');
             item.classList.add('autocomplete-item');
             item.textContent = suggestion;
-            
-            item.addEventListener('click', function() {
+            item.addEventListener('click', () => {
                 searchInput.value = suggestion;
-                // 바로 submit 대신, submit 이벤트 핸들러를 실행
-                searchForm.dispatchEvent(new Event('submit', { cancelable: true })); 
+                searchForm.dispatchEvent(new Event('submit'));
                 hideAutocomplete();
             });
             autocompleteResults.appendChild(item);
         });
-
         autocompleteResults.style.display = 'block';
     }
 
     function hideAutocomplete() {
         autocompleteResults.style.display = 'none';
-        autocompleteResults.innerHTML = '';
-        currentFocus = -1;
+        const shortcutsList = document.getElementById('user-shortcuts-list');
+        if (shortcutsList) shortcutsList.style.display = 'flex';
     }
-    
-    searchInput.addEventListener('keydown', function(e) {
+
+    searchInput.addEventListener('keydown', (e) => {
         let items = autocompleteResults.querySelectorAll('.autocomplete-item');
-        
         if (items.length === 0) return;
-        
-        if (e.key === 'ArrowDown') { 
-            e.preventDefault();
-            currentFocus = (currentFocus + 1) % items.length;
-            setActive(items);
-        } else if (e.key === 'ArrowUp') { 
-            e.preventDefault();
-            currentFocus = (currentFocus - 1 + items.length) % items.length;
-            setActive(items);
-        } else if (e.key === 'Enter') { 
-            if (currentFocus > -1) {
-                // Enter key pressed while an item is highlighted
-                e.preventDefault();
-                items[currentFocus].click(); 
-            } else {
-                // Regular form submit
-                // Enter key press should trigger the submit event to hit the handler below
-                searchForm.dispatchEvent(new Event('submit', { cancelable: true }));
-            }
+        if (e.key === 'ArrowDown') { e.preventDefault(); currentFocus = (currentFocus + 1) % items.length; setActive(items); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); currentFocus = (currentFocus - 1 + items.length) % items.length; setActive(items); }
+        else if (e.key === 'Enter') { 
+            if (currentFocus > -1) { e.preventDefault(); items[currentFocus].click(); }
         }
     });
 
-    searchForm.addEventListener('submit', function(event) {
-        event.preventDefault(); 
-        let query = searchInput.value.trim();
-        if (query === "") return; 
-
-        // Check if the query is a URL
-        const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/i;
-        if (urlRegex.test(query)) {
-            let targetUrl = query;
-            if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
-                targetUrl = 'https://' + targetUrl;
-            }
-            
-            // 💡 URL 차단 로직 제거: 이제 background.js가 웹 요청을 가로챕니다.
-            window.location.href = targetUrl; 
-        } else {
-            // It's a search term, submit the form normally
-            this.submit(); 
-        }
-    });
-    
-    document.addEventListener('click', function(e) {
-        if (e.target.id !== 'search-input' && !e.target.classList.contains('autocomplete-item')) {
-            hideAutocomplete();
-        }
-    });
-    
     function setActive(items) {
         items.forEach(item => item.classList.remove('active'));
-        if (currentFocus > -1 && currentFocus < items.length) {
+        if (currentFocus > -1) {
             items[currentFocus].classList.add('active');
             searchInput.value = items[currentFocus].textContent;
         }
     }
-}
 
-
-// --- 목표 문구 기능 ---
-function loadGoal() {
-    const goalTextElement = document.getElementById('goal-text');
-    const savedGoal = localStorage.getItem(GOAL_STORAGE_KEY);
-    
-    const defaultGoal = "🔥 만약 1년 안에 1억을 벌지 못했을 때 당신이 죽는다면 어떤 일을 시작할건가요? 🔥";
-
-    if (savedGoal) {
-        goalTextElement.textContent = savedGoal;
-    } else {
-        goalTextElement.textContent = defaultGoal;
-    }
-
-    goalTextElement.addEventListener('click', () => {
-        const currentText = goalTextElement.textContent;
-        const input = document.createElement('input');
-        
-        input.type = 'text';
-        // 기본 문구일 경우 입력 필드는 비워둡니다.
-        input.value = (currentText === defaultGoal) ? "" : currentText; 
-        input.id = 'goal-input-editor';
-        
-        goalTextElement.parentNode.replaceChild(input, goalTextElement);
-        input.focus();
-
-        const saveGoal = () => {
-            const newGoal = input.value.trim() || defaultGoal;
-            localStorage.setItem(GOAL_STORAGE_KEY, newGoal);
-            goalTextElement.textContent = newGoal;
-            oldChild.replaceWith(newChild);
-        };
-        
-        input.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                saveGoal();
-            }
-        });
-        
-        input.addEventListener('blur', saveGoal);
+    searchForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const query = searchInput.value.trim();
+        if (!query) return;
+        const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/i;
+        if (urlRegex.test(query)) {
+            window.location.href = query.startsWith('http') ? query : 'https://' + query;
+        } else { this.submit(); }
     });
 }
 
-
-// --- 사용자 정의 바로가기 렌더링 함수 ---
+// --- 사용자 정의 바로가기 렌더링 ---
 function renderUserShortcuts() {
     let urls = JSON.parse(localStorage.getItem(ACCESSIBLE_URLS_KEY) || '[]');
     const userShortcutsList = document.getElementById('user-shortcuts-list');
+    if (!userShortcutsList) return;
     userShortcutsList.innerHTML = ''; 
 
     urls.forEach((url) => {
         const a = document.createElement('a');
-        a.href = "#"; // Prevent immediate navigation
-        a.classList.add('shortcut-icon', 'user-shortcut-icon');
-        a.target = "_self";
-        
+        a.href = "#"; a.classList.add('shortcut-icon', 'user-shortcut-icon');
         try {
-            const domain = new URL(url).hostname;
-            a.title = domain;
-            
-            // Google Favicon API를 사용하여 파비콘을 배경 이미지로 설정
             a.style.backgroundImage = `url("https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(url)}")`;
-            
         } catch (e) {
-            a.title = url;
-            a.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
-            a.innerHTML = '🔗';
+            a.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'; a.innerHTML = '🔗';
         }
-        
-        // 💡 바로가기 아이콘 클릭 시 URL 검사 로직 제거: background.js가 웹 요청을 가로챕니다.
-        a.addEventListener('click', (e) => {
-            e.preventDefault();
-            window.location.href = url;
-        });
-
+        a.onclick = (e) => { e.preventDefault(); window.location.href = url; };
         userShortcutsList.appendChild(a);
     });
 }
 
-
-// --- 접근 가능 URL 기능 ---
-// 💡 URL 제한 로직을 포함하도록 addAccessibleUrl을 수정
-function addAccessibleUrl(newUrl) {
-    let urls = JSON.parse(localStorage.getItem(ACCESSIBLE_URLS_KEY) || '[]');
-    const urlInput = document.getElementById('url-input');
-    const urlWarning = document.getElementById('url-limit-warning');
-    
-    
-    // 🚨 [수정] newUrl을 저장 전에 가공합니다.
-    const processedUrl = processUrl(newUrl); // newtab.js에 processUrl 함수가 필요함
-    
-    if (urls.includes(processedUrl)) { // 🚨 가공된 형태로 중복 확인
-        alert("이미 등록된 도메인입니다.");
-        return;
-    }
-
-    // 💡 제한 초과 시 경고 표시 
-    if (urls.length >= MAX_URLS) {
-        if (urlWarning) {
-            urlWarning.classList.add('active'); // 경고 문구 표시
-            if (urlInput) {
-                urlInput.classList.add('shake'); // 흔들림 애니메이션 시작
-                setTimeout(() => urlInput.classList.remove('shake'), 500); // 애니메이션 후 클래스 제거
-            }
-        }
-        return; // 추가하지 않고 함수 종료
-    }
-    
-    urls.push(processedUrl);
-    
-    // chrome.storage와 localStorage 동기화 (Background.js가 chrome.storage를 감시)
-    localStorage.setItem(ACCESSIBLE_URLS_KEY, JSON.stringify(urls));
-    chrome.storage.local.set({ [ACCESSIBLE_URLS_KEY]: urls });
-    
-    loadAccessibleUrls();
-    renderUserShortcuts(); 
-}
-
-function processUrl(urlString) {
-    try {
-        const url = new URL(urlString);
-        let base = `${url.protocol}//${url.host}`;
-        if (!base.endsWith('/')) {
-            base += '/';
-        }
-        return base; 
-    } catch (e) {
-        let simpleBase = urlString.split(/[?#]/)[0];
-        if (!simpleBase.endsWith('/')) {
-            simpleBase += '/';
-        }
-        return simpleBase;
-    }
-}
-
-function updateAccessibleUrl(oldUrl, newUrl) {
-    let urls = JSON.parse(localStorage.getItem(ACCESSIBLE_URLS_KEY) || '[]');
-    
-    // http/https 접두사 보장
-    if (!newUrl.startsWith('http://') && !newUrl.startsWith('https://')) {
-        newUrl = 'https://' + newUrl;
-    }
-    
-    if (newUrl === oldUrl) return; 
-
-    if (urls.includes(newUrl)) {
-        alert("이미 등록된 URL입니다.");
-        return;
-    }
-
-    const index = urls.indexOf(oldUrl);
-    if (index !== -1) {
-        urls[index] = newUrl;
-        
-        // chrome.storage와 localStorage 동기화
-        localStorage.setItem(ACCESSIBLE_URLS_KEY, JSON.stringify(urls));
-        chrome.storage.local.set({ [ACCESSIBLE_URLS_KEY]: urls });
-        
-        loadAccessibleUrls();
-        renderUserShortcuts();
-    }
-}
-
-
 function loadAccessibleUrls() {
     let urls = JSON.parse(localStorage.getItem(ACCESSIBLE_URLS_KEY) || '[]');
     const listContainer = document.getElementById('accessible-urls-list');
-    const urlWarning = document.getElementById('url-limit-warning'); // 💡 경고 문구 참조
+    if (!listContainer) return;
     listContainer.innerHTML = ''; 
+    if (urls.length === 0) listContainer.innerHTML = '<p class="setting-desc" style="color:#aaa;">등록된 웹사이트가 없습니다.</p>';
 
-    if (urls.length === 0) {
-        listContainer.innerHTML = '<p class="setting-desc" style="color:#aaa;">등록된 웹사이트가 없습니다.</p>';
-    }
+    urls.forEach((urlItem, index) => {
+        const item = document.createElement('div'); item.classList.add('accessible-url-item');
+        item.innerHTML = `
+            <div class="url-text" style="display:flex; align-items:center; gap:8px;">
+                <div class="move-btns" style="display:flex; flex-direction:column; gap:2px;">
+                    <button class="move-up" style="font-size:10px; padding:0; background:none; border:none; cursor:pointer; opacity:0.5;">▲</button>
+                    <button class="move-down" style="font-size:10px; padding:0; background:none; border:none; cursor:pointer; opacity:0.5;">▼</button>
+                </div>
+                <span>${urlItem}</span>
+            </div>
+            <button class="url-delete-btn">❌</button>
+        `;
 
-    // 💡 로드 시 제한 초과 여부를 확인하고 경고 문구 상태 업데이트
-    if (urls.length >= MAX_URLS) {
-        if(urlWarning) urlWarning.classList.add('active');
-    } else {
-        if(urlWarning) urlWarning.classList.remove('active');
-    }
-
-    urls.forEach((urlItem) => {
-        const item = document.createElement('div');
-        item.classList.add('accessible-url-item');
-        
-        const urlText = document.createElement('span');
-        urlText.classList.add('url-text');
-        urlText.textContent = urlItem;
-        
-        const btnContainer = document.createElement('div');
-        btnContainer.classList.add('url-btn-container');
-
-        const editBtn = document.createElement('button');
-        editBtn.classList.add('edit-url-btn');
-        editBtn.innerHTML = '🔄'; 
-        editBtn.title = '수정';
-        editBtn.addEventListener('click', () => {
-            const currentUrl = urlText.textContent;
-            const input = document.createElement('input');
-            input.type = 'url';
-            input.value = currentUrl;
-            input.classList.add('url-input-editor'); 
-            input.style.width = '100%';
-            input.style.textShadow = 'none';
-            input.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
-            input.style.border = '1px solid #FFC107';
-            input.style.color = 'white';
-            input.style.padding = '5px';
-            input.style.borderRadius = '3px';
-            input.style.boxSizing = 'border-box';
-
-
-            urlText.parentNode.replaceChild(input, urlText);
-            input.focus();
-
-            const saveUrl = () => {
-                const newUrl = input.value.trim();
-                if (newUrl) {
-                    updateAccessibleUrl(currentUrl, newUrl);
-                } else {
-                    // Empty input or escape (blur) without change: restore original text span
-                    input.parentNode.replaceChild(urlText, input);
-                    urlText.textContent = currentUrl; 
-                }
-            };
-
-            input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    saveUrl();
-                    input.blur(); // Blur triggers saveUrl too, but this handles Enter press cleanly
-                }
-            });
-            input.addEventListener('blur', saveUrl);
-        });
-        
-        const deleteBtn = document.createElement('button');
-        deleteBtn.classList.add('url-delete-btn');
-        deleteBtn.innerHTML = '❌';
-        deleteBtn.title = '삭제';
-        deleteBtn.addEventListener('click', () => deleteAccessibleUrl(urlItem));
-
-        btnContainer.appendChild(editBtn); 
-        btnContainer.appendChild(deleteBtn);
-
-        item.appendChild(urlText);
-        item.appendChild(btnContainer); 
+        item.querySelector('.move-up').onclick = () => {
+            if (index > 0) {
+                [urls[index], urls[index-1]] = [urls[index-1], urls[index]];
+                saveUrls(urls);
+            }
+        };
+        item.querySelector('.move-down').onclick = () => {
+            if (index < urls.length - 1) {
+                [urls[index], urls[index+1]] = [urls[index+1], urls[index]];
+                saveUrls(urls);
+            }
+        };
+        item.querySelector('.url-delete-btn').onclick = () => {
+            urls = urls.filter(u => u !== urlItem);
+            saveUrls(urls);
+        };
         listContainer.appendChild(item);
     });
 }
 
-function deleteAccessibleUrl(urlToDelete) {
-    let urls = JSON.parse(localStorage.getItem(ACCESSIBLE_URLS_KEY) || '[]');
-    urls = urls.filter(url => url !== urlToDelete); 
-    
-    // chrome.storage와 localStorage 동기화
+function saveUrls(urls) {
     localStorage.setItem(ACCESSIBLE_URLS_KEY, JSON.stringify(urls));
     chrome.storage.local.set({ [ACCESSIBLE_URLS_KEY]: urls });
-    
-    loadAccessibleUrls();
-    renderUserShortcuts(); 
+    loadAccessibleUrls(); renderUserShortcuts();
 }
 
-
-// --- 할 일 목록 기능 ---
-function loadTodos() {
-    let todos = JSON.parse(localStorage.getItem(TODO_STORAGE_KEY) || '[]');
-    const todoWarning = document.getElementById('todo-limit-warning'); // 💡 경고 문구 참조
-    
-    todos.sort((a, b) => a.completed - b.completed); 
-
-    const todoList = document.getElementById('todo-list');
-    todoList.innerHTML = ''; 
-
-    // 💡 로드 시 제한 초과 여부를 확인하고 경고 문구 상태 업데이트
-    if (todos.length >= MAX_TODOS) {
-        if(todoWarning) todoWarning.classList.add('active');
-    } else {
-        if(todoWarning) todoWarning.classList.remove('active');
+function addAccessibleUrl(url) {
+    let urls = JSON.parse(localStorage.getItem(ACCESSIBLE_URLS_KEY) || '[]');
+    const processed = processUrl(url);
+    if (!urls.includes(processed) && urls.length < MAX_URLS) {
+        urls.push(processed); 
+        saveUrls(urls);
     }
+}
 
-    todos.forEach((todoItem) => {
-        const li = document.createElement('li');
-        li.textContent = todoItem.text;
+// --- 목표 문구 기능 ---
+function loadGoal() {
+    const goalTextElement = document.getElementById('goal-text');
+    const defaultGoal = "🔥 만약 1년 안에 1억을 벌지 못했을 때 당신이 죽는다면 어떤 일을 시작할건가요? 🔥";
+    goalTextElement.textContent = localStorage.getItem(GOAL_STORAGE_KEY) || defaultGoal;
 
-        if (todoItem.completed) {
-            li.classList.add('completed');
-        }
+    goalTextElement.addEventListener('click', () => {
+        const currentText = goalTextElement.textContent;
+        const input = document.createElement('input');
+        input.type = 'text'; input.value = currentText === defaultGoal ? "" : currentText;
+        input.classList.add('input-field-dark'); input.style.width = "100%"; input.style.textAlign = "center";
+        goalTextElement.parentNode.replaceChild(input, goalTextElement);
+        input.focus();
 
-        const btnContainer = document.createElement('div');
-        btnContainer.classList.add('todo-btn-container');
-
-        const completeBtn = document.createElement('button');
-        completeBtn.classList.add('complete-btn');
-        completeBtn.innerHTML = todoItem.completed ? '🔄' : '✅'; 
-        completeBtn.title = todoItem.completed ? '완료 취소' : '완료';
-        completeBtn.addEventListener('click', () => toggleComplete(todoItem.text));
-
-        const deleteBtn = document.createElement('button');
-        deleteBtn.innerHTML = '❌';
-        deleteBtn.title = '삭제';
-        deleteBtn.classList.add('delete-btn-icon');
-        deleteBtn.addEventListener('click', () => deleteTodo(todoItem.text));
-
-        btnContainer.appendChild(completeBtn);
-        btnContainer.appendChild(deleteBtn);
-        
-        li.appendChild(btnContainer);
-        todoList.appendChild(li);
+        const revert = () => {
+            const newGoal = input.value.trim() || defaultGoal;
+            localStorage.setItem(GOAL_STORAGE_KEY, newGoal);
+            goalTextElement.textContent = newGoal;
+            if (input.parentNode) input.parentNode.replaceChild(goalTextElement, input);
+        };
+        input.onkeypress = (e) => { if (e.key === 'Enter') revert(); };
+        input.onblur = revert;
     });
-    
-    localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(todos));
 }
 
-// 💡 할 일 제한 로직을 포함하도록 addTodo를 수정
-function addTodo(todoText) {
-    const todos = JSON.parse(localStorage.getItem(TODO_STORAGE_KEY) || '[]');
-    const todoWarning = document.getElementById('todo-limit-warning');
-    const todoInput = document.getElementById('todo-input'); // 흔들림을 위해 참조 추가
-    
-    // 💡 제한 초과 시 추가하지 않고 경고 표시
-    if (todos.length >= MAX_TODOS) {
-        if(todoWarning) todoWarning.classList.add('active'); // 경고 문구 표시
-        if (todoInput) {
-             todoInput.classList.add('shake'); // 흔들림 애니메이션 시작
-             setTimeout(() => todoInput.classList.remove('shake'), 500); // 애니메이션 후 클래스 제거
+// --- 주식 관리 ---
+function loadCustomStocks() {
+    let stocks = [];
+    try {
+        const saved = localStorage.getItem(STOCK_SYMBOLS_KEY);
+        stocks = JSON.parse(saved) || [];
+        if (typeof stocks === 'string') {
+            stocks = stocks.split(',').map(s => ({ symbol: s.trim(), purchasePrice: null }));
         }
-        return;
-    }
-    
-    todos.push({ text: todoText, completed: false });
-    localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(todos));
-    loadTodos(); 
+    } catch (e) { stocks = [{ symbol: 'AAPL', purchasePrice: null }]; }
+
+    const container = document.getElementById('custom-stocks-list');
+    if (!container) return;
+    container.innerHTML = '';
+
+    stocks.forEach((stock, i) => {
+        const item = document.createElement('div'); 
+        item.classList.add('accessible-url-item');
+        
+        const priceDisplay = stock.purchasePrice ? stock.purchasePrice.toLocaleString() : '미입력';
+        
+        item.innerHTML = `
+            <div class="url-text" style="display:flex; align-items:center; gap:8px;">
+                <div class="move-btns" style="display:flex; flex-direction:column; gap:2px;">
+                    <button class="move-up" style="font-size:10px; padding:0; background:none; border:none; cursor:pointer; opacity:0.5;">▲</button>
+                    <button class="move-down" style="font-size:10px; padding:0; background:none; border:none; cursor:pointer; opacity:0.5;">▼</button>
+                </div>
+                <strong>${stock.symbol}</strong> 
+                <span class="stock-buy-price" title="클릭하여 매수가 수정" style="cursor:pointer; margin-left:4px; font-size:0.85em; color:var(--accent-color);">
+                    매수: ${priceDisplay}
+                </span>
+            </div>
+            <button class="url-delete-btn">❌</button>
+        `;
+
+        item.querySelector('.move-up').onclick = () => {
+            if (i > 0) {
+                [stocks[i], stocks[i-1]] = [stocks[i-1], stocks[i]];
+                saveStocks(stocks);
+            }
+        };
+        item.querySelector('.move-down').onclick = () => {
+            if (i < stocks.length - 1) {
+                [stocks[i], stocks[i+1]] = [stocks[i+1], stocks[i]];
+                saveStocks(stocks);
+            }
+        };
+
+        const priceSpan = item.querySelector('.stock-buy-price');
+        priceSpan.onclick = () => {
+            const input = document.createElement('input');
+            input.type = 'number'; input.value = stock.purchasePrice || '';
+            input.step = 'any'; input.classList.add('input-field-dark');
+            input.style.width = '80px'; input.style.padding = '4px 8px'; input.style.fontSize = '0.85em';
+            priceSpan.parentNode.replaceChild(input, priceSpan);
+            input.focus();
+            const save = () => {
+                stock.purchasePrice = input.value.trim() !== '' ? parseFloat(input.value) : null;
+                saveStocks(stocks);
+            };
+            input.onblur = save; input.onkeypress = (e) => { if (e.key === 'Enter') input.blur(); };
+        };
+
+        item.querySelector('.url-delete-btn').onclick = () => {
+            stocks.splice(i, 1); 
+            saveStocks(stocks);
+        };
+        container.appendChild(item);
+    });
+    localStorage.setItem(STOCK_SYMBOLS_KEY, JSON.stringify(stocks));
 }
 
-function toggleComplete(todoText) {
-    let todos = JSON.parse(localStorage.getItem(TODO_STORAGE_KEY) || '[]');
-    const index = todos.findIndex(todo => todo.text === todoText); 
-    if (index !== -1) {
-        todos[index].completed = !todos[index].completed;
-        localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(todos));
-        loadTodos(); 
-    }
+function saveStocks(stocks) {
+    localStorage.setItem(STOCK_SYMBOLS_KEY, JSON.stringify(stocks));
+    loadCustomStocks(); 
+    fetchStockPrices();
 }
 
-function deleteTodo(todoText) {
-    let todos = JSON.parse(localStorage.getItem(TODO_STORAGE_KEY) || '[]');
-    todos = todos.filter(todo => todo.text !== todoText); 
-    localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(todos));
-    loadTodos(); 
-}
-
-
-// --- 페이지 로드 시 실행 및 버튼 기능 ---
+// --- 초기화 및 이벤트 리스너 ---
 document.addEventListener('DOMContentLoaded', () => {
+    updateTime(); setInterval(updateTime, 1000);
     setupSearch(); 
-    loadGoal(); 
-    loadTodos(); 
-    renderUserShortcuts(); 
-    loadSettings(); 
-    
-    // 페이지 로드 시 현재 날짜를 확인하여 혹시 지나쳤을 자정 리셋을 처리
-    const now = new Date();
-    const dateText = `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일`;
-    checkAndResetTodos(dateText);
+    const savedEngine = localStorage.getItem(SEARCH_ENGINE_KEY) || 'google';
+    updateSearchEngineUI(savedEngine);
+    refreshAllInfo(); setInterval(refreshAllInfo, 1000 * 60 * 30);
+    loadGoal(); loadTodos(); renderUserShortcuts(); loadSettings();
 
-    const addTodoForm = document.getElementById('add-todo-form');
-    const todoInput = document.getElementById('todo-input');
-    
+    // [수정] Todo 리스트 초기 가시성 설정
     const todoContainer = document.getElementById('todo-list-container');
     const todos = JSON.parse(localStorage.getItem(TODO_STORAGE_KEY) || '[]');
-    if (todos.length > 0) {
-        // [수정] 초기 로드 시 내용이 있으면 display: block 설정
-        todoContainer.style.display = 'block'; 
+    if (todoContainer && todos.length > 0) {
+        todoContainer.style.display = 'flex'; 
         todoContainer.classList.add('open');
     }
-    const todoToggleButton = document.getElementById('todo-toggle-btn');
-    
+
+    const googleBtn = document.getElementById('google-engine-btn');
+    const naverBtn = document.getElementById('naver-engine-btn');
+    if (googleBtn) googleBtn.onclick = () => { updateSearchEngineUI('google'); localStorage.setItem(SEARCH_ENGINE_KEY, 'google'); };
+    if (naverBtn) naverBtn.onclick = () => { updateSearchEngineUI('naver'); localStorage.setItem(SEARCH_ENGINE_KEY, 'naver'); };
+
+    const addStockForm = document.getElementById('add-stock-form');
+    if (addStockForm) addStockForm.onsubmit = (e) => {
+        e.preventDefault();
+        const symbolInput = document.getElementById('stock-symbol-input');
+        const symbol = symbolInput.value.trim();
+        if (symbol) {
+            let stocks = JSON.parse(localStorage.getItem(STOCK_SYMBOLS_KEY) || '[]');
+            stocks.push({ symbol: symbol.toUpperCase(), purchasePrice: null });
+            localStorage.setItem(STOCK_SYMBOLS_KEY, JSON.stringify(stocks));
+            loadCustomStocks(); 
+            fetchStockPrices();
+            symbolInput.value = '';
+        }
+    };
+
+    const saveWeatherBtn = document.getElementById('save-weather-btn');
+    if (saveWeatherBtn) saveWeatherBtn.onclick = () => {
+        const val = document.getElementById('weather-location-input').value.trim();
+        if (val) { localStorage.setItem(WEATHER_LOCATION_KEY, val); alert('날씨 설정 저장됨'); fetchWeather(); }
+    };
+
+    document.getElementById('add-todo-form').onsubmit = (e) => {
+        e.preventDefault();
+        const input = document.getElementById('todo-input');
+        if (input.value.trim()) { addTodo(input.value.trim()); input.value = ''; }
+    };
+
+    document.getElementById('add-url-form').onsubmit = (e) => {
+        e.preventDefault();
+        const input = document.getElementById('url-input');
+        if (input.value.trim()) { addAccessibleUrl(input.value.trim()); input.value = ''; }
+    };
+
+    document.getElementById('todo-toggle-btn').onclick = () => {
+        if (todoContainer.classList.contains('open')) {
+            todoContainer.classList.remove('open'); setTimeout(() => todoContainer.style.display = 'none', 300);
+        } else {
+            todoContainer.style.display = 'block'; setTimeout(() => todoContainer.classList.add('open'), 10);
+        }
+    };
+    document.getElementById('close-todoList-btn').onclick = () => {
+        todoContainer.classList.remove('open'); setTimeout(() => todoContainer.style.display = 'none', 300);
+    };
+
     const settingsPanel = document.getElementById('settings-panel');
-    const settingsButton = document.getElementById('settings-btn');
-    const closeSettingsButton = document.getElementById('close-settings-btn');
-    const closeTodoListButton = document.getElementById('close-todoList-btn');
-    const addUrlForm = document.getElementById('add-url-form'); 
-    const urlInput = document.getElementById('url-input');
-    
-    const focusToggle = document.getElementById('focus-mode-toggle');
-    const scheduleToggle = document.getElementById('focus-schedule-toggle'); 
-    const focusStart = document.getElementById('focus-start-time');
-    const focusEnd = document.getElementById('focus-end-time');
+    const openSettings = () => {
+        loadAccessibleUrls(); settingsPanel.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => settingsPanel.classList.add('open'), 10);
+    };
+    const closeSettings = () => {
+        settingsPanel.classList.remove('open'); document.body.style.overflow = '';
+        setTimeout(() => settingsPanel.style.display = 'none', 300);
+    };
+    document.getElementById('settings-btn').onclick = openSettings;
+    document.getElementById('close-settings-btn').onclick = closeSettings;
 
-
-    // --- 이벤트 리스너 ---
-
-    // ToDo
-    addTodoForm.addEventListener('submit', function(event) {
-        event.preventDefault(); 
-        const todoText = todoInput.value.trim();
-        
-        if (todoText) {
-            addTodo(todoText);
-            todoInput.value = ''; 
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.activeElement.tagName !== 'INPUT') {
+            if (settingsPanel.classList.contains('open')) closeSettings();
         }
     });
 
-    // URL
-    addUrlForm.addEventListener('submit', function(event) {
-        event.preventDefault();
-        const newUrl = urlInput.value.trim();
-        if (newUrl) {
-            addAccessibleUrl(newUrl);
-            urlInput.value = '';
-        }
-    });
-    
-    // ToDo Toggle
-    todoToggleButton.addEventListener('click', () => {
-
-        const todoContainer = document.getElementById('todo-list-container');
-        const isOpen = todoContainer.classList.contains('open');
-        
-        if (!isOpen) {
-            // 열기: display를 먼저 block으로 설정
-            todoContainer.style.display = 'block'; 
-            // 다음 틱에 open 클래스 추가하여 슬라이드 인 애니메이션 실행
-            setTimeout(() => todoContainer.classList.add('open'), 10);
-        } else {
-            // 닫기: open 클래스 제거하여 슬라이드 아웃 애니메이션 실행
-            todoContainer.classList.remove('open');
-            // 애니메이션 완료(300ms) 후 display: none 처리
-            setTimeout(() => todoContainer.style.display = 'none', 300);
-        }
-    });
-    
-    // ToDo List Close 버튼
-    closeTodoListButton.addEventListener('click', () => {
-        const todoContainer = document.getElementById('todo-list-container');
-        // 닫기: open 클래스 제거하여 슬라이드 아웃 애니메이션 실행
-        todoContainer.classList.remove('open');
-        // 애니메이션 완료(300ms) 후 display: none 처리
-        setTimeout(() => todoContainer.style.display = 'none', 300);
-    });
-    
-    // 💡 설정 패널을 여는 함수
-    function openSettingsPanel() {
-        // 이미 열려있다면 아무것도 하지 않음
-        if (settingsPanel.classList.contains('open')) {
-            return; 
-        }
-        // 패널 열기 로직
-        loadAccessibleUrls(); 
-        settingsPanel.style.display = 'block'; // 먼저 보이게 설정
-        // 다음 틱에 transform 적용하여 애니메이션 실행
-        setTimeout(() => settingsPanel.classList.add('open'), 10); 
-        loadSettings(); 
-    }
-    
-    // 세팅 패널 닫는 함수
-    function closeSettingsPanel() {
-        // 패널이 열려 있을 때만 닫기 동작을 수행하도록 조건을 추가하는 것이 좋습니다.
-        if (settingsPanel.classList.contains('open')) {
-            settingsPanel.classList.remove('open');
-            // 애니메이션 완료 후 display: none 처리
-            setTimeout(() => settingsPanel.style.display = 'none', 300);
-        }
-    }
-
-    settingsButton.addEventListener('click', () => {
-        const isOpen = settingsPanel.classList.contains('open');
-        
-        if (!isOpen) {
-            openSettingsPanel(); // 열기 함수 호출
-        } else {
-            closeSettingsPanel(); // 닫기 함수 호출
-        }
-    });
-
-    // 2. Settings Panel Close (닫기 버튼)
-    closeSettingsButton.addEventListener('click', closeSettingsPanel);
-
-    // 3. ESC Key Down (ESC 키)
-    document.addEventListener('keydown', (event) => {
-    // 💡 인풋이나 에디터가 활성화되어 있을 때는 ESC가 폼을 닫는 동작을 막기 위해 제외
-    const isInputActive = document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA';
-        
-    if ((event.key === 'Escape' || event.keyCode === 27) && !isInputActive) { 
-        
-        const isSettingsOpen = settingsPanel.classList.contains('open');
-
-        if (isSettingsOpen) {
-            closeSettingsPanel(); 
-        } else {
-            openSettingsPanel();
-        }
-    }
+    document.getElementById('focus-mode-toggle').onchange = saveFocusSettings;
+    document.getElementById('focus-schedule-toggle').onchange = saveFocusSettings;
+    document.getElementById('focus-start-time').onchange = saveFocusSettings;
+    document.getElementById('focus-end-time').onchange = saveFocusSettings;
 });
-    
-    // Focus Mode 이벤트 리스너: 설정 변경 시 저장
-    if (focusToggle && scheduleToggle) {
-        focusToggle.addEventListener('change', saveFocusSettings);
-        scheduleToggle.addEventListener('change', saveFocusSettings); 
-        focusStart.addEventListener('change', saveFocusSettings);
-        focusEnd.addEventListener('change', saveFocusSettings);
+
+function loadTodos() {
+    let todos = JSON.parse(localStorage.getItem(TODO_STORAGE_KEY) || '[]');
+    const list = document.getElementById('todo-list');
+    if (!list) return;
+    list.innerHTML = '';
+    todos.forEach(t => {
+        const li = document.createElement('li'); if (t.completed) li.classList.add('completed');
+        li.innerHTML = `<span class="todo-text">${t.text}</span><div class="todo-btn-container">
+            <button class="complete-btn">${t.completed ? '🔄' : '✅'}</button><button class="delete-btn-icon">❌</button></div>`;
+        li.querySelector('.complete-btn').onclick = () => { t.completed = !t.completed; localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(todos)); loadTodos(); };
+        li.querySelector('.delete-btn-icon').onclick = () => { 
+            todos = todos.filter(x => x.text !== t.text); localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(todos)); loadTodos(); 
+        };
+        list.appendChild(li);
+    });
+}
+
+function addTodo(text) {
+    let todos = JSON.parse(localStorage.getItem(TODO_STORAGE_KEY) || '[]');
+    if (todos.length < MAX_TODOS) {
+        todos.push({ text, completed: false }); localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(todos)); loadTodos();
     }
-});
+}
+
+function saveFocusSettings() {
+    const isSchedule = document.getElementById('focus-schedule-toggle').checked;
+    localStorage.setItem(FOCUS_SCHEDULE_TOGGLE_KEY, isSchedule ? 'on' : 'off');
+    localStorage.setItem(FOCUS_START_TIME_KEY, document.getElementById('focus-start-time').value);
+    localStorage.setItem(FOCUS_END_TIME_KEY, document.getElementById('focus-end-time').value);
+    if (!isSchedule) setFocusModeState(document.getElementById('focus-mode-toggle').checked, true);
+    else checkFocusModeSchedule(lastKnownTimeStr);
+    updateTimeControlsState();
+}
+
+function loadSettings() {
+    chrome.storage.local.get([FOCUS_MODE_KEY], (data) => {
+        const isFocus = data[FOCUS_MODE_KEY] === 'on';
+        const isSchedule = localStorage.getItem(FOCUS_SCHEDULE_TOGGLE_KEY) === 'on';
+        document.getElementById('focus-mode-toggle').checked = isFocus;
+        document.getElementById('focus-schedule-toggle').checked = isSchedule;
+        document.getElementById('focus-start-time').value = localStorage.getItem(FOCUS_START_TIME_KEY) || '09:00';
+        document.getElementById('focus-end-time').value = localStorage.getItem(FOCUS_END_TIME_KEY) || '17:00';
+        setFocusModeState(isFocus, true); updateTimeControlsState();
+        if (isSchedule) checkFocusModeSchedule(lastKnownTimeStr);
+    });
+    document.getElementById('weather-location-input').value = localStorage.getItem(WEATHER_LOCATION_KEY) || '37.5665, 126.9780';
+    loadCustomStocks();
+}
