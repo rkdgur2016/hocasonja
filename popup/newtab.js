@@ -14,8 +14,42 @@ const MAX_URLS = 10;
 const MAX_TODOS = 10; 
 
 let lastKnownTimeStr = ''; 
+let currentTranslations = {};
 
 // --- Helper Functions ---
+async function loadTranslations(lang) {
+    try {
+        const response = await fetch(`../_locales/${lang}/messages.json`);
+        currentTranslations = await response.json();
+    } catch (e) {
+        console.error("번역 파일을 로드하는 데 실패했습니다:", e);
+    }
+}
+
+async function applyTranslations() {
+    const lang = localStorage.getItem('preferredLanguage') || 'ko';
+    await loadTranslations(lang);
+    
+    // Handle textContent
+    document.querySelectorAll('[data-i18n]').forEach(element => {
+        const messageKey = element.getAttribute('data-i18n');
+        if (currentTranslations[messageKey] && currentTranslations[messageKey].message) {
+            element.textContent = currentTranslations[messageKey].message;
+        }
+    });
+
+    // Handle placeholders
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+        const messageKey = element.getAttribute('data-i18n-placeholder');
+        if (currentTranslations[messageKey] && currentTranslations[messageKey].message) {
+            element.placeholder = currentTranslations[messageKey].message;
+        }
+    });
+    
+    // 언어 변경 시에도 목표 문구 업데이트 (기본값인 경우)
+    await loadGoal();
+}
+
 function debounce(func, delay) {
     let timeout;
     return function() {
@@ -45,28 +79,25 @@ function processUrl(urlString) {
 // --- 시간 및 날짜 기능 ---
 function updateTime() {
     const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-    const day = now.getDate();
-    const weekDays = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
-    const weekDay = weekDays[now.getDay()];
     
-    const dateText = `${year}년 ${month}월 ${day}일 · ${weekDay}`;
+    // Format Date using system locale
+    const dateOptions = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+    const dateText = new Intl.DateTimeFormat('ko-KR', dateOptions).format(now);
+    
     const dateEl = document.getElementById('date');
     if (dateEl) dateEl.textContent = dateText;
     
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-    const seconds = now.getSeconds().toString().padStart(2, '0');
+    // Format Time using system locale
+    const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+    const timeText = new Intl.DateTimeFormat('ko-KR', timeOptions).format(now);
     
-    lastKnownTimeStr = `${hours}:${minutes}`; 
-
     const timeEl = document.getElementById('time');
-    if (timeEl) timeEl.textContent = `${hours}:${minutes}:${seconds}`;
-
-    if (hours === '00' && minutes === '00' && seconds === '00') {
-        checkAndResetTodos(dateText);
-    }
+    if (timeEl) timeEl.textContent = timeText;
+    
+    // Update schedule checker
+    const timeParts = timeText.split(':');
+    lastKnownTimeStr = `${timeParts[0]}:${timeParts[1]}`;
+    
     checkFocusModeSchedule(lastKnownTimeStr); 
 }
 
@@ -103,17 +134,14 @@ function checkFocusModeSchedule(currentTimeStr) {
 
 function setFocusModeState(state, updateManualToggle) {
     const body = document.body;
-    const indicator = document.querySelector('.focus-mode-indicator');
     const manualToggle = document.getElementById('focus-mode-toggle');
     
     chrome.storage.local.set({ [FOCUS_MODE_KEY]: state ? 'on' : 'off' });
     
     if (state) {
-        body.classList.add('focus-mode');
-        if (indicator) indicator.style.display = 'block';
+        body.classList.add('focus-mode-active');
     } else {
-        body.classList.remove('focus-mode');
-        if (indicator) indicator.style.display = 'none';
+        body.classList.remove('focus-mode-active');
     }
     
     if (manualToggle && updateManualToggle) {
@@ -148,8 +176,12 @@ async function fetchWeather() {
     try {
         const location = localStorage.getItem(WEATHER_LOCATION_KEY) || '37.5665, 126.9780';
         const [lat, lon] = location.split(',').map(s => s.trim());
-        const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&hourly=precipitation_probability&daily=temperature_2m_max,temperature_2m_min&timezone=Asia%2FSeoul&forecast_days=1`);
+        const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&hourly=precipitation_probability&daily=temperature_2m_max,temperature_2m_min&forecast_days=1`);
         const data = await response.json();
+        
+        if (data.timezone) {
+            localStorage.setItem('userTimezone', data.timezone);
+        }
         
         const temp = data.current.temperature_2m;
         const maxTemp = data.daily.temperature_2m_max[0];
@@ -288,16 +320,21 @@ function refreshAllInfo() {
 function updateSearchEngineUI(engine) {
     const googleBtn = document.getElementById('google-engine-btn');
     const naverBtn = document.getElementById('naver-engine-btn');
+    const yahooBtn = document.getElementById('yahoo-engine-btn');
     const searchForm = document.getElementById('search-form');
     const searchInput = document.getElementById('search-input');
-    if (!googleBtn || !naverBtn || !searchForm || !searchInput) return;
+    if (!googleBtn || !naverBtn || !yahooBtn || !searchForm || !searchInput) return;
 
     if (engine === 'naver') {
-        naverBtn.classList.add('active'); googleBtn.classList.remove('active');
+        naverBtn.classList.add('active'); googleBtn.classList.remove('active'); yahooBtn.classList.remove('active');
         searchForm.action = 'https://search.naver.com/search.naver';
         searchInput.name = 'query'; searchInput.placeholder = '네이버 검색 또는 URL 입력';
+    } else if (engine === 'yahoo') {
+        yahooBtn.classList.add('active'); googleBtn.classList.remove('active'); naverBtn.classList.remove('active');
+        searchForm.action = 'https://search.yahoo.com/search';
+        searchInput.name = 'p'; searchInput.placeholder = 'Yahoo 검색 또는 URL 입력';
     } else {
-        googleBtn.classList.add('active'); naverBtn.classList.remove('active');
+        googleBtn.classList.add('active'); naverBtn.classList.remove('active'); yahooBtn.classList.remove('active');
         searchForm.action = 'https://www.google.com/search';
         searchInput.name = 'q'; searchInput.placeholder = '구글 검색 또는 URL 입력';
     }
@@ -452,28 +489,65 @@ function addAccessibleUrl(url) {
 }
 
 // --- 목표 문구 기능 ---
-function loadGoal() {
+async function loadGoal() {
     const goalTextElement = document.getElementById('goal-text');
-    const defaultGoal = "🔥 만약 1년 안에 1억을 벌지 못했을 때 당신이 죽는다면 어떤 일을 시작할건가요? 🔥";
-    goalTextElement.textContent = localStorage.getItem(GOAL_STORAGE_KEY) || defaultGoal;
+    
+    // 번역된 기본 목표 문구 가져오기
+    const defaultGoal = (currentTranslations['goal_placeholder'] && currentTranslations['goal_placeholder'].message) 
+        ? currentTranslations['goal_placeholder'].message 
+        : "🔥 만약 1년 안에 1억을 벌지 못했을 때 당신이 죽는다면 어떤 일을 시작할건가요? 🔥";
+    
+    const savedGoal = localStorage.getItem(GOAL_STORAGE_KEY);
+    
+    // 사용자 정의 목표가 없거나, 이전 언어의 기본 목표와 일치하는 경우 새 언어의 기본 목표로 업데이트
+    const isDefault = !savedGoal || isDefaultGoal(savedGoal);
+    
+    if (isDefault) {
+        goalTextElement.textContent = defaultGoal;
+    } else {
+        goalTextElement.textContent = savedGoal;
+    }
 
     goalTextElement.addEventListener('click', () => {
         const currentText = goalTextElement.textContent;
         const input = document.createElement('input');
-        input.type = 'text'; input.value = currentText === defaultGoal ? "" : currentText;
+        input.type = 'text'; 
+        // 입력창에는 기본 목표일 경우 비워둠
+        input.value = (isDefaultGoal(currentText)) ? "" : currentText;
         input.classList.add('input-field-dark'); input.style.width = "100%"; input.style.textAlign = "center";
         goalTextElement.parentNode.replaceChild(input, goalTextElement);
         input.focus();
 
+        let isReverted = false;
         const revert = () => {
-            const newGoal = input.value.trim() || defaultGoal;
-            localStorage.setItem(GOAL_STORAGE_KEY, newGoal);
-            goalTextElement.textContent = newGoal;
+            if (isReverted) return;
+            isReverted = true;
+            
+            const newGoal = input.value.trim();
+            if (newGoal === "") {
+                // 사용자가 비워두면 다시 새 언어의 기본 목표로 설정
+                localStorage.removeItem(GOAL_STORAGE_KEY);
+                goalTextElement.textContent = (currentTranslations['goal_placeholder'] && currentTranslations['goal_placeholder'].message) ? currentTranslations['goal_placeholder'].message : defaultGoal;
+            } else {
+                localStorage.setItem(GOAL_STORAGE_KEY, newGoal);
+                goalTextElement.textContent = newGoal;
+            }
             if (input.parentNode) input.parentNode.replaceChild(goalTextElement, input);
         };
         input.onkeypress = (e) => { if (e.key === 'Enter') revert(); };
         input.onblur = revert;
     });
+}
+
+// 기본 목표 문구인지 확인하는 헬퍼 함수
+function isDefaultGoal(text) {
+    // 모든 언어의 기본 문구 리스트 (필요시 확장)
+    const defaults = [
+        "🔥 만약 1년 안에 1억을 벌지 못했을 때 당신이 죽는다면 어떤 일을 시작할건가요? 🔥",
+        "🔥 Set your goal and be reminded every day 🔥",
+        "🔥 目標を設定して、毎日思い出しましょう 🔥"
+    ];
+    return defaults.includes(text);
 }
 
 // --- 주식 관리 ---
@@ -556,6 +630,7 @@ function saveStocks(stocks) {
 
 // --- 초기화 및 이벤트 리스너 ---
 document.addEventListener('DOMContentLoaded', () => {
+    applyTranslations();
     updateTime(); setInterval(updateTime, 1000);
     setupSearch(); 
     const savedEngine = localStorage.getItem(SEARCH_ENGINE_KEY) || 'google';
@@ -573,8 +648,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const googleBtn = document.getElementById('google-engine-btn');
     const naverBtn = document.getElementById('naver-engine-btn');
+    const yahooBtn = document.getElementById('yahoo-engine-btn');
     if (googleBtn) googleBtn.onclick = () => { updateSearchEngineUI('google'); localStorage.setItem(SEARCH_ENGINE_KEY, 'google'); };
     if (naverBtn) naverBtn.onclick = () => { updateSearchEngineUI('naver'); localStorage.setItem(SEARCH_ENGINE_KEY, 'naver'); };
+    if (yahooBtn) yahooBtn.onclick = () => { updateSearchEngineUI('yahoo'); localStorage.setItem(SEARCH_ENGINE_KEY, 'yahoo'); };
 
     const addStockForm = document.getElementById('add-stock-form');
     if (addStockForm) addStockForm.onsubmit = (e) => {
@@ -643,6 +720,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('focus-schedule-toggle').onchange = saveFocusSettings;
     document.getElementById('focus-start-time').onchange = saveFocusSettings;
     document.getElementById('focus-end-time').onchange = saveFocusSettings;
+
+    const langSelect = document.getElementById('language-select');
+    langSelect.value = localStorage.getItem('preferredLanguage') || 'ko';
+    langSelect.onchange = () => {
+        localStorage.setItem('preferredLanguage', langSelect.value);
+        applyTranslations();
+    };
 });
 
 function loadTodos() {

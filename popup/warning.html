@@ -3,60 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>집중 모드 경고</title>
+    <title data-i18n="focus_warning">집중 모드 경고</title>
     <link rel="stylesheet" href="newtab.css"/> 
     <style>
         body {
-    background: linear-gradient(135deg, #1e3a8a 0%, #0c1c4b 100%);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
-    overflow: hidden; /* 스크롤 방지 */
-}
+            background-color: #111111;
+            color: #eeeeee;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+        }
 
-/* newtab.css의 .blocker-content를 중앙에 직접 배치 */
-.blocker-content {
-    background-color: rgba(255, 255, 255, 0.1);
-    padding: 40px;
-    border-radius: 15px;
-    text-align: center;
-    max-width: 500px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    border: 2px solid #EF4444;
-    
-    /* 애니메이션 속성 유지 */
-    animation: fadeIn 0.3s ease-out; 
-    
-    color: white; /* 텍스트 색상 보장 */
-}
+        .blocker-content {
+            background-color: var(--card-bg);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 500px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+            border: 2px solid var(--focus-color);
+            color: var(--text-primary);
+        }
 
-/* ✨ fadeIn 애니메이션 keyframes 정의 추가 ✨ */
-@keyframes fadeIn {
-    from {
-        opacity: 0; /* 시작 시 투명 */
-        transform: translateY(20px); /* 시작 시 중앙보다 20px 아래에 위치 */
-    }
-    to {
-        opacity: 1; /* 종료 시 불투명 */
-        transform: translateY(0); /* 중앙 위치로 이동 */
-    }
-}
+        .blocker-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn-proceed, .btn-cancel {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-proceed {
+            background-color: var(--focus-color);
+            color: white;
+        }
+
+        .btn-cancel {
+            background-color: #e4e4e7;
+            color: var(--text-primary);
+        }
+
+        .small-text {
+            font-size: 0.8em;
+            color: var(--text-secondary);
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
 
-    <div class="blocker-content page-center">
-        <h2>🚨 집중 모드 경고: 방해 웹사이트 접근 시도</h2>
-        <p><span class="highlight-text">목표 </span>를 이뤄내는 중입니다.</p>
-        <p><strong id="blocked-url-display"></strong> 
-        <p>접근하시겠습니까?</p>
+    <div class="blocker-content">
+        <h2 data-i18n="focus_warning">🚨 집중 모드 경고: 방해 웹사이트 접근 시도</h2>
+        <p data-i18n="focus_warning_desc">현재 집중 모드가 활성화되어 있습니다.</p>
+        <p><strong id="blocked-url-display"></strong></p>
+        <p data-i18n="focus_warning_ask">목표 달성을 위해 허용 목록에 없는 웹사이트에 접근하시겠습니까?</p>
         <div class="blocker-actions">
-            <button id="confirm-yes" class="btn-proceed">예, 접근합니다</button>
-            <button id="confirm-no" class="btn-cancel">아니오, 돌아갑니다</button>
+            <button id="confirm-yes" class="btn-proceed" data-i18n="yes_proceed">예, 접근합니다</button>
+            <button id="confirm-no" class="btn-cancel" data-i18n="no_cancel">아니오, 돌아갑니다</button>
         </div>
-        <p class="small-text">신중하게 선택하세요. 목표가 눈앞에 있습니다!</p>
+        <p class="small-text" data-i18n="careful_message">신중하게 선택하세요. 목표가 눈앞에 있습니다!</p>
     </div>
 
     <script src="warning.js"></script>

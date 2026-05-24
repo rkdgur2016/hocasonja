@@ -1,7 +1,36 @@
 // warning.js
 const GOAL_STORAGE_KEY = 'customNewTabGoal';
 
-document.addEventListener('DOMContentLoaded', () => {
+// applyTranslations 로직을 warning.js에서도 사용하기 위해 newtab.js의 로직과 유사하게 구현
+let currentTranslations = {};
+async function loadTranslations(lang) {
+    try {
+        const response = await fetch(`../_locales/${lang}/messages.json`);
+        currentTranslations = await response.json();
+    } catch (e) {
+        console.error("번역 파일을 로드하는 데 실패했습니다:", e);
+    }
+}
+
+async function applyTranslations() {
+    const lang = localStorage.getItem('preferredLanguage') || 'ko';
+    await loadTranslations(lang);
+    
+    // Handle textContent
+    document.querySelectorAll('[data-i18n]').forEach(element => {
+        const messageKey = element.getAttribute('data-i18n');
+        if (currentTranslations[messageKey] && currentTranslations[messageKey].message) {
+            // 특수 케이스: title 속성 번역
+            if (element.tagName === 'TITLE') {
+                document.title = currentTranslations[messageKey].message;
+            }
+            element.textContent = currentTranslations[messageKey].message;
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await applyTranslations();
     // 1. URL 파라미터에서 원래 가려던 URL (target)을 가져옴
     const urlParams = new URLSearchParams(window.location.search);
     const targetUrl = urlParams.get('target');
@@ -13,10 +42,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmNo = document.getElementById('confirm-no');  // '아니오, 돌아갑니다' 버튼 ID
 
     // 3. 화면에 차단된 URL 표시
-    if (targetUrl && blockedUrlDisplay) {
-        blockedUrlDisplay.textContent = decodeURIComponent(savedGoal);
+    if (savedGoal && blockedUrlDisplay) {
+        blockedUrlDisplay.textContent = savedGoal;
     } else if (blockedUrlDisplay) {
-        blockedUrlDisplay.textContent = '설정한 목표가 존재하지 않습니다.';
+        const fallbackText = currentTranslations['no_goal_set'] ? currentTranslations['no_goal_set'].message : '설정한 목표가 존재하지 않습니다.';
+        blockedUrlDisplay.textContent = fallbackText;
     }
 
     // 4. [예, 접근합니다] 버튼 클릭 시 (브라우저 종료 시까지 도메인 허용)

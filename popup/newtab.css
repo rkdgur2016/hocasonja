@@ -397,9 +397,14 @@ body.focus-mode {
     box-shadow: -15px 0 50px rgba(0, 0, 0, 0.08);
     z-index: 2000;
     transform: translateX(100%);
-    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), top 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     display: none;
     flex-direction: column;
+}
+
+body.focus-mode-active .settings-panel {
+    top: 40px;
+    height: calc(100vh - 40px);
 }
 
 .settings-panel.open {
@@ -447,7 +452,28 @@ input:checked + .slider:before { transform: translateX(18px); }
 input[type="text"], input[type="url"], input[type="time"], input[type="number"] { flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-soft); background: #f9fafb; font-size: 0.9em; outline: none; }
 .add-btn, .submit_btn { background: var(--text-primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; }
 
-.focus-mode-indicator { position: fixed; top: 0; width: 100%; background: var(--focus-color); color: white; padding: 6px; text-align: center; font-weight: 700; z-index: 3000; display: none; font-size: 0.85em; }
+.focus-mode-indicator { 
+    position: fixed; 
+    top: -40px; 
+    width: 100%; 
+    background: var(--focus-color); 
+    color: white; 
+    padding: 10px; 
+    text-align: center; 
+    font-weight: 700; 
+    z-index: 3000; 
+    font-size: 0.9em;
+    transition: top 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.focus-mode-active {
+    padding-top: 40px;
+    transition: padding-top 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.focus-mode-active .focus-mode-indicator {
+    top: 0;
+}
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 4px; }
