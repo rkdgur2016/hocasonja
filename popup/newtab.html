@@ -31,6 +31,7 @@
         </div>
 
         <div class="search-shortcuts-area">
+            <div id="recent-searches-container" class="recent-searches"></div>
             <div class="search-bar-wrapper">
                 <div class="search-engine-selector">
                     <button type="button" id="google-engine-btn" class="engine-select-btn active" title="Google Search">G</button>
@@ -68,6 +69,10 @@
             <div class="todo-header">
                 <h3 data-i18n="today_todo">오늘의 할 일</h3>
                 <button id="close-todoList-btn" class="close-btn">&times;</button>
+            </div>
+            <p class="todo-reset-info" data-i18n="todo_reset_info" style="font-size: 0.75em; color: #9ca3af; margin-bottom: 5px; text-align: center;">매일 오전 00시에 자동 초기화됩니다.</p>
+            <div class="reset-progress-container">
+                <div id="todo-reset-progress"></div>
             </div>
             
             <form id="add-todo-form" class="flex-group">

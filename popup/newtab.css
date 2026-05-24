@@ -115,6 +115,33 @@ body.focus-mode {
     align-items: center;
 }
 
+.recent-searches {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 6px;
+    width: 100%;
+    justify-content: flex-start;
+}
+
+.recent-search-item {
+    font-size: 0.75em;
+    color: var(--text-secondary);
+    background: rgba(0, 0, 0, 0.03);
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+}
+
+.recent-search-item:hover {
+    background: rgba(0, 0, 0, 0.08);
+    color: var(--text-primary);
+}
+
 .search-bar-wrapper {
     width: 100%;
     position: relative;
@@ -381,6 +408,25 @@ body.focus-mode {
     justify-content: space-between;
     align-items: center;
     font-size: 0.9em;
+}
+
+#todo-list li.completed .todo-text {
+    text-decoration: line-through;
+    color: #9ca3af;
+}
+
+.reset-progress-container {
+    height: 4px;
+    background: #e5e7eb;
+    border-radius: 2px;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+#todo-reset-progress {
+    height: 100%;
+    width: 0%;
+    background: var(--accent-color);
+    transition: width 0.5s;
 }
 
 .todo-text { flex: 1; word-break: break-all; margin-right: 10px; }

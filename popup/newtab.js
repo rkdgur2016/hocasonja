@@ -10,8 +10,10 @@ const FOCUS_SCHEDULE_TOGGLE_KEY = 'isFocusScheduleOn';
 const SEARCH_ENGINE_KEY = 'preferredSearchEngine';
 const STOCK_SYMBOLS_KEY = 'customStockSymbols';
 const WEATHER_LOCATION_KEY = 'customWeatherLocation';
+const RECENT_SEARCHES_KEY = 'recentSearches';
 const MAX_URLS = 10; 
 const MAX_TODOS = 10; 
+const MAX_RECENT_SEARCHES = 5; 
 
 let lastKnownTimeStr = ''; 
 let currentTranslations = {};
@@ -99,6 +101,25 @@ function updateTime() {
     lastKnownTimeStr = `${timeParts[0]}:${timeParts[1]}`;
     
     checkFocusModeSchedule(lastKnownTimeStr); 
+
+    // [추가] 초기화 진행률 업데이트
+    updateTodoResetProgress();
+}
+
+// [수정] 초기화 진행률 계산 및 업데이트 (100% -> 0%)
+function updateTodoResetProgress() {
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const elapsedMs = now - startOfDay;
+    const totalDayMs = 24 * 60 * 60 * 1000;
+    
+    // 남은 비율 계산: 100% - (경과 비율)
+    const remainingPercentage = 100 - (elapsedMs / totalDayMs) * 100;
+    
+    const progressBar = document.getElementById('todo-reset-progress');
+    if (progressBar) {
+        progressBar.style.width = `${remainingPercentage}%`;
+    }
 }
 
 function parseTime(timeStr) {
@@ -315,6 +336,37 @@ function refreshAllInfo() {
     fetchExchangeRate(); fetchWeather(); fetchOilPrices(); fetchStockPrices();
 }
 
+// --- 최근 검색 기록 ---
+function saveRecentSearch(query) {
+    let recent = JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || '[]');
+    recent = recent.filter(q => q !== query);
+    recent.unshift(query);
+    if (recent.length > MAX_RECENT_SEARCHES) recent.pop();
+    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(recent));
+    renderRecentSearches();
+}
+
+function renderRecentSearches() {
+    const container = document.getElementById('recent-searches-container');
+    if (!container) return;
+    const recent = JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || '[]');
+    container.innerHTML = '';
+    recent.forEach(q => {
+        const item = document.createElement('span');
+        item.classList.add('recent-search-item');
+        item.textContent = q;
+        item.onclick = () => {
+            const searchInput = document.getElementById('search-input');
+            const searchForm = document.getElementById('search-form');
+            if (searchInput && searchForm) {
+                searchInput.value = q;
+                searchForm.dispatchEvent(new Event('submit'));
+            }
+        };
+        container.appendChild(item);
+    });
+}
+
 // --- 검색 기능 ---
 
 function updateSearchEngineUI(engine) {
@@ -406,6 +458,7 @@ function setupSearch() {
         e.preventDefault();
         const query = searchInput.value.trim();
         if (!query) return;
+        saveRecentSearch(query);
         const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/i;
         if (urlRegex.test(query)) {
             window.location.href = query.startsWith('http') ? query : 'https://' + query;
@@ -636,7 +689,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedEngine = localStorage.getItem(SEARCH_ENGINE_KEY) || 'google';
     updateSearchEngineUI(savedEngine);
     refreshAllInfo(); setInterval(refreshAllInfo, 1000 * 60 * 30);
-    loadGoal(); loadTodos(); renderUserShortcuts(); loadSettings();
+    loadGoal(); loadTodos(); renderUserShortcuts(); loadSettings(); renderRecentSearches();
 
     // [수정] Todo 리스트 초기 가시성 설정
     const todoContainer = document.getElementById('todo-list-container');
@@ -731,6 +784,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function loadTodos() {
     let todos = JSON.parse(localStorage.getItem(TODO_STORAGE_KEY) || '[]');
+    
+    // 완료 여부를 기준으로 정렬 (false: 미완료, true: 완료)
+    todos.sort((a, b) => a.completed - b.completed);
+    
     const list = document.getElementById('todo-list');
     if (!list) return;
     list.innerHTML = '';
