@@ -79,6 +79,17 @@ function processUrl(urlString) {
 }
 
 // --- 시간 및 날짜 기능 ---
+function checkAndResetTodos() {
+    const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD 형식 (로컬 타임존 기준)
+    const lastResetDate = localStorage.getItem(LAST_RESET_DATE_KEY);
+
+    if (lastResetDate !== today) {
+        localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify([]));
+        localStorage.setItem(LAST_RESET_DATE_KEY, today);
+        if (typeof loadTodos === 'function') loadTodos();
+    }
+}
+
 function updateTime() {
     const now = new Date();
     
@@ -102,7 +113,8 @@ function updateTime() {
     
     checkFocusModeSchedule(lastKnownTimeStr); 
 
-    // [추가] 초기화 진행률 업데이트
+    // [추가] 초기화 진행률 업데이트 및 실제 초기화 체크
+    checkAndResetTodos();
     updateTodoResetProgress();
 }
 
