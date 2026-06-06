@@ -14,18 +14,51 @@ document.addEventListener('DOMContentLoaded', () => {
     function getUrlsFromStorage() {
         try {
             const storedValue = localStorage.getItem(STORAGE_KEY);
-            return JSON.parse(storedValue) || [];
+            let data = JSON.parse(storedValue) || [];
+            
+            // [마이그레이션] 이전 단순 URL 문자열 배열을 구조화된 단축키 객체 배열로 호환
+            if (data.length > 0 && typeof data[0] === 'string') {
+                data = data.map((url, index) => {
+                    let name = '';
+                    try {
+                        const u = new URL(url);
+                        name = u.hostname.replace('www.', '').split('.')[0];
+                        name = name.charAt(0).toUpperCase() + name.slice(1);
+                    } catch(e) {
+                        name = 'Link';
+                    }
+                    return {
+                        id: 'link_' + Date.now() + '_' + index + '_' + Math.random().toString(36).substr(2, 4),
+                        type: 'link',
+                        name: name,
+                        url: url
+                    };
+                });
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            }
+            return data;
         } catch (e) {
             console.error("Failed to parse URLs from localStorage:", e);
             return [];
         }
     }
 
-    function saveUrlsToStorage(urls) {
+    function saveUrlsToStorage(shortcuts) {
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(urls));
-            // newtab.js와 동기화를 위해 chrome.storage.local에도 저장합니다.
-            chrome.storage.local.set({ [STORAGE_KEY]: urls }); 
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(shortcuts));
+            
+            // 평탄화 작업 후 chrome.storage.local 에 동기화하여 백그라운드 스크립트와의 호환성 유지
+            const flatUrls = [];
+            shortcuts.forEach(item => {
+                if (item.type === 'link') {
+                    flatUrls.push(item.url);
+                } else if (item.type === 'folder' && item.children) {
+                    item.children.forEach(child => {
+                        flatUrls.push(child.url);
+                    });
+                }
+            });
+            chrome.storage.local.set({ [STORAGE_KEY]: flatUrls }); 
             return true;
         } catch (e) {
             console.error("Failed to save URLs to localStorage:", e);
@@ -125,13 +158,37 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (allowedUrls.includes(normalizedUrl)) {
+        // 중복 검사 (루트 및 폴더 내부 전체 검사)
+        let exists = false;
+        allowedUrls.forEach(item => {
+            if (item.type === 'link' && item.url === normalizedUrl) exists = true;
+            else if (item.type === 'folder' && item.children) {
+                if (item.children.some(c => c.url === normalizedUrl)) exists = true;
+            }
+        });
+
+        if (exists) {
             showMessage('🚫 이 URL은 이미 허용 목록에 있습니다.', 'error');
             addButton.disabled = false;
             return;
         }
 
-        allowedUrls.push(normalizedUrl);
+        let name = '';
+        try {
+            const u = new URL(normalizedUrl);
+            name = u.hostname.replace('www.', '').split('.')[0];
+            name = name.charAt(0).toUpperCase() + name.slice(1);
+        } catch(e) {
+            name = 'Link';
+        }
+
+        allowedUrls.push({
+            id: 'link_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            type: 'link',
+            name: name,
+            url: normalizedUrl
+        });
+
         const isSaved = saveUrlsToStorage(allowedUrls);
         
         if (isSaved) {

@@ -47,12 +47,20 @@
             <div id="user-shortcuts-list" class="shortcuts-list">
                 <!-- 바로가기 아이콘들이 여기에 위치 -->
             </div>
-        </div>
 
-        <!-- 주식 정보 영역 (리스트 형식) -->
-        <div class="stock-info-area">
-            <div id="stock-prices" class="stock-list-container">
-                <!-- 주식 항목들이 리스트 형태로 여기에 추가됨 -->
+            <!-- 장기 메모 및 시스템 컨테이너 (메인 페이지 고정 노출) -->
+            <div id="notes-list-container" class="notes-list-container">
+                <div class="notes-header">
+                    <h3 data-i18n="long_term_notes">장기 메모 & 시스템</h3>
+                    <div class="notes-header-actions">
+                        <button id="add-note-btn" class="add-note-btn" title="새 메모 추가"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                </div>
+                <p class="notes-desc" data-i18n="notes_desc" style="font-size: 0.75em; color: #9ca3af; margin-bottom: 10px; text-align: center;">직접 지우기 전까지 보존되는 장기 계획 메모장입니다.</p>
+                
+                <div id="notes-items-wrapper" class="notes-items-wrapper">
+                    <!-- 스티커 메모가 스크립트에 의해 여기에 생성됨 -->
+                </div>
             </div>
         </div>
 
@@ -60,9 +68,11 @@
             <button id="todo-toggle-btn" class="utility-btn" title="할 일 목록">
                 <i class="fa-solid fa-list-check"></i>
             </button>
-            <button id="settings-btn" class="utility-btn" title="설정">
-                <i class="fa-solid fa-gear"></i>
-            </button>
+            <select id="language-select" class="utility-btn" style="width: auto; padding: 0 10px; font-size: 0.9em; cursor: pointer; text-align: center; display: inline-flex;" title="Language">
+                <option value="ko">🇰🇷</option>
+                <option value="en">🇺🇸</option>
+                <option value="ja">🇯🇵</option>
+            </select>
         </div>
 
         <div id="todo-list-container" class="todo-list-container" style="display:none;">
@@ -83,76 +93,87 @@
             <ul id="todo-list"></ul>
         </div>
     </div>
-    
-    <div id="settings-panel" class="settings-panel">
-        <div class="settings-header">
-            <h2><i class="fas fa-gear"></i> <span data-i18n="settings_esc">설정 (ESC)</span></h2>
-            <button id="close-settings-btn" class="close-btn" title="닫기">&times;</button>
-        </div>
 
-        <div class="settings-body">
-            <div class="setting-section">
-                <span class="setting-title" data-i18n="focus_mode">집중 모드</span>
-                <div class="setting-row">
+    <!-- 우측 사이드바 (집중 모드 및 관여 주식) -->
+    <div class="right-sidebar">
+        <!-- 집중 모드 퀵 컨트롤 패널 (메인 화면) -->
+        <div class="focus-quick-control">
+            <div class="focus-quick-header">
+                <span class="focus-quick-title">
+                    <i class="fa-solid fa-fire-flame-curved"></i>
+                    <span data-i18n="focus_mode">집중 모드</span>
+                </span>
+            </div>
+            <div class="focus-quick-body">
+                <div class="focus-quick-row">
                     <span data-i18n="manual_activation">수동 활성화</span>
                     <label class="switch">
                         <input type="checkbox" id="focus-mode-toggle">
                         <span class="slider"></span>
                     </label>
                 </div>
-                
-                <div class="setting-row">
+                <div class="focus-quick-row" style="margin-top: 8px;">
                     <span data-i18n="schedule_reservation">스케줄 예약</span>
                     <label class="switch">
                         <input type="checkbox" id="focus-schedule-toggle">
                         <span class="slider"></span>
                     </label>
                 </div>
-                
-                <p class="setting-desc" data-i18n="focus_mode_desc">집중 모드가 켜지면, 아래 허용 목록에 없는 모든 URL 접근은 차단됩니다.</p>
-                
-                <div class="mt-4">
-                    <div class="flex-container-small" id="focus-time-controls">
-                        <span data-i18n="start_time">시작 시간:</span>
-                        <input type="time" id="focus-start-time" class="setting-time-input">
-                        <span data-i18n="end_time">종료 시간:</span>
-                        <input type="time" id="focus-end-time" class="setting-time-input">
+                <div id="focus-time-controls" class="focus-quick-time" style="margin-top: 10px;">
+                    <div class="time-input-group">
+                        <span data-i18n="start_time" style="font-size: 0.85em; flex-shrink: 0; width: 85px;">시작 시간:</span>
+                        <input type="time" id="focus-start-time" class="focus-time-input">
+                    </div>
+                    <div class="time-input-group" style="margin-top: 6px;">
+                        <span data-i18n="end_time" style="font-size: 0.85em; flex-shrink: 0; width: 85px;">종료 시간:</span>
+                        <input type="time" id="focus-end-time" class="focus-time-input">
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <div class="setting-section">
-                <div class="setting-title" data-i18n="allowlist">허용 웹사이트 목록 (Allowlist)</div>
-                <p class="setting-desc" data-i18n="allowlist_desc">집중 모드 시 접근을 허용할 URL을 입력하세요. (예: https://google.com)</p>
-                <form id="add-url-form" class="flex-group">
-                    <input type="url" id="url-input" data-i18n-placeholder="search_placeholder" placeholder="URL 입력 (예: google.com)" required class="input-field-dark">
-                    <button type="submit" class="submit_btn" data-i18n="add">추가</button>
-                </form>
-                <div id="accessible-urls-list" class="scrollable-content"></div>
+    <!-- 바로가기 직접 추가 모달 -->
+    <div id="add-shortcut-modal" class="shortcut-modal-overlay" style="display:none;">
+        <div class="shortcut-modal-content">
+            <div class="shortcut-modal-header">
+                <h3 data-i18n="add_shortcut_or_folder">바로가기 / 폴더 추가</h3>
+                <button id="close-shortcutModal-btn" class="close-btn">&times;</button>
+            </div>
+            
+            <div class="shortcut-modal-tabs">
+                <button type="button" id="tab-add-link" class="modal-tab-btn active" data-i18n="add_link">링크 추가</button>
+                <button type="button" id="tab-add-folder" class="modal-tab-btn" data-i18n="add_folder">폴더 추가</button>
             </div>
 
-            <div class="setting-section">
-                <div class="setting-title" data-i18n="stock_management">관심 주식 관리</div>
-                <p class="setting-desc" data-i18n="stock_management_desc">종목코드를 추가하고 리스트에서 매수가를 설정하세요.</p>
-                <form id="add-stock-form" class="flex-group">
-                    <input type="text" id="stock-symbol-input" data-i18n="stock_symbol_placeholder" placeholder="심볼 (예: AAPL)" required>
-                    <button type="submit" class="submit_btn" data-i18n="add">추가</button>
+            <div class="shortcut-modal-body">
+                <!-- 링크 추가 폼 -->
+                <form id="modal-link-form" class="modal-form-content">
+                    <div class="input-wrapper-modal">
+                        <label for="modal-link-name" data-i18n="name_optional">이름 (선택)</label>
+                        <input type="text" id="modal-link-name" placeholder="예: 구글 (비워두면 자동 설정)" data-i18n-placeholder="name_optional_placeholder">
+                    </div>
+                    <div class="input-wrapper-modal">
+                        <label for="modal-link-url" data-i18n="url_required">URL (필수)</label>
+                        <input type="text" id="modal-link-url" placeholder="예: google.com" data-i18n-placeholder="url_required_placeholder" required>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn-cancel" id="cancel-link-btn" data-i18n="cancel">취소</button>
+                        <button type="submit" class="btn-proceed" data-i18n="add">추가</button>
+                    </div>
                 </form>
-                <div id="custom-stocks-list" class="scrollable-content" style="margin-bottom: 20px;"></div>
 
-                <div class="setting-title" data-i18n="other_info">기타 실시간 정보</div>
-                <p class="setting-desc" data-i18n="weather_location">날씨 위치 (위도, 경도)</p>
-                <div class="flex-group">
-                    <input type="text" id="weather-location-input" data-i18n="weather_location_placeholder" placeholder="위도, 경도 (예: 37.5665, 126.9780)" class="input-field-dark">
-                    <button id="save-weather-btn" class="submit_btn" data-i18n="save">저장</button>
-                </div>
-
-                <div class="setting-title" style="margin-top:20px;" data-i18n="settings">언어 설정 (Language)</div>
-                <select id="language-select" class="input-field-dark" style="width: 100%; padding: 8px; border-radius: 4px; cursor: pointer;">
-                    <option value="ko">🇰🇷 한국어 (Korean)</option>
-                    <option value="en">🇺🇸 English</option>
-                    <option value="ja">🇯🇵 日本語 (Japanese)</option>
-                </select>
+                <!-- 폴더 추가 폼 -->
+                <form id="modal-folder-form" class="modal-form-content" style="display:none;">
+                    <div class="input-wrapper-modal">
+                        <label for="modal-folder-name" data-i18n="folder_name">폴더 이름</label>
+                        <input type="text" id="modal-folder-name" placeholder="예: 업무" data-i18n-placeholder="folder_name_placeholder" required>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn-cancel" id="cancel-folder-btn" data-i18n="cancel">취소</button>
+                        <button type="submit" class="btn-proceed" data-i18n="add">추가</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
