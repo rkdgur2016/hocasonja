@@ -30,108 +30,183 @@
             <div id="oil-prices" class="info-card-seamless" title="유가 (휘/경)"></div>
         </div>
 
-        <div class="search-shortcuts-area">
-            <div id="recent-searches-container" class="recent-searches"></div>
-            <div class="search-bar-wrapper">
-                <div class="search-engine-selector">
-                    <button type="button" id="google-engine-btn" class="engine-select-btn active" title="Google Search">G</button>
-                    <button type="button" id="naver-engine-btn" class="engine-select-btn" title="Naver Search">N</button>
-                    <button type="button" id="yahoo-engine-btn" class="engine-select-btn" title="Yahoo Search">Y</button>
-                </div>
-                <form id="search-form" action="https://www.google.com/search" method="get" target="_self">
-                    <input type="text" id="search-input" name="q" data-i18n-placeholder="search_placeholder" placeholder="구글 검색 또는 URL 입력" autocomplete="off" class="input-field">
-                </form>
-                <div id="autocomplete-results" class="autocomplete-results"></div>
-            </div>
+        <!-- 메인 3열 분할 레이아웃 컨테이너 -->
+        <div class="main-columns-wrapper">
             
-            <div id="user-shortcuts-list" class="shortcuts-list">
-                <!-- 바로가기 아이콘들이 여기에 위치 -->
-            </div>
-
-            <!-- 장기 메모 및 시스템 컨테이너 (메인 페이지 고정 노출) -->
-            <div id="notes-list-container" class="notes-list-container">
-                <div class="notes-header">
-                    <h3 data-i18n="long_term_notes">장기 메모 & 시스템</h3>
-                    <div class="notes-header-actions">
-                        <button id="add-note-btn" class="add-note-btn" title="새 메모 추가"><i class="fa-solid fa-plus"></i></button>
+            <!-- 좌측 열 (집중 모드) -->
+            <div class="left-column">
+                <!-- 집중 모드 퀵 컨트롤 패널 (메인 화면) -->
+                <div class="focus-quick-control">
+                    <div class="focus-quick-header">
+                        <span class="focus-quick-title">
+                            <i class="fa-solid fa-fire-flame-curved"></i>
+                            <span data-i18n="focus_mode">집중 모드</span>
+                        </span>
+                    </div>
+                    <div class="focus-quick-body">
+                        <div class="focus-quick-row">
+                            <span data-i18n="manual_activation">수동 활성화</span>
+                            <label class="switch">
+                                <input type="checkbox" id="focus-mode-toggle">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="focus-quick-row" style="margin-top: 8px;">
+                            <span data-i18n="schedule_reservation">스케줄 예약</span>
+                            <label class="switch">
+                                <input type="checkbox" id="focus-schedule-toggle">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div id="focus-time-controls" class="focus-quick-time" style="margin-top: 10px;">
+                            <div class="time-input-group">
+                                <span data-i18n="start_time" style="font-size: 0.85em; flex-shrink: 0; width: 85px;">시작 시간:</span>
+                                <input type="time" id="focus-start-time" class="focus-time-input">
+                            </div>
+                            <div class="time-input-group" style="margin-top: 6px;">
+                                <span data-i18n="end_time" style="font-size: 0.85em; flex-shrink: 0; width: 85px;">종료 시간:</span>
+                                <input type="time" id="focus-end-time" class="focus-time-input">
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <p class="notes-desc" data-i18n="notes_desc" style="font-size: 0.75em; color: #9ca3af; margin-bottom: 10px; text-align: center;">직접 지우기 전까지 보존되는 장기 계획 메모장입니다.</p>
-                
-                <div id="notes-items-wrapper" class="notes-items-wrapper">
-                    <!-- 스티커 메모가 스크립트에 의해 여기에 생성됨 -->
+            </div>
+
+            <!-- 중간 열 (검색, 바로가기, 달력 비교 및 계획) -->
+            <div class="middle-column">
+                <div class="search-shortcuts-area">
+                    <div id="recent-searches-container" class="recent-searches"></div>
+                    <div class="search-bar-wrapper">
+                        <div class="search-engine-selector">
+                            <button type="button" id="google-engine-btn" class="engine-select-btn active" title="Google Search">G</button>
+                            <button type="button" id="naver-engine-btn" class="engine-select-btn" title="Naver Search">N</button>
+                            <button type="button" id="yahoo-engine-btn" class="engine-select-btn" title="Yahoo Search">Y</button>
+                        </div>
+                        <form id="search-form" action="https://www.google.com/search" method="get" target="_self">
+                            <input type="text" id="search-input" name="q" data-i18n-placeholder="search_placeholder" placeholder="구글 검색 또는 URL 입력" autocomplete="off" class="input-field">
+                        </form>
+                        <div id="autocomplete-results" class="autocomplete-results"></div>
+                    </div>
+                    
+                    <div id="user-shortcuts-list" class="shortcuts-list">
+                        <!-- 바로가기 아이콘들이 여기에 위치 -->
+                    </div>
+                </div>
+
+                <!-- 달력 비교 및 계획 컨테이너 -->
+                <div id="calendar-planner-container" class="calendar-planner-container">
+                    <div class="calendar-planner-header">
+                        <div class="calendar-header-title">
+                            <i class="fa-solid fa-calendar-days"></i>
+                            <span data-i18n="calendar_planner_title">달력 비교 및 계획</span>
+                        </div>
+                        <div class="calendar-month-selector">
+                            <button id="calendar-prev-month-btn" class="calendar-nav-btn"><i class="fa-solid fa-chevron-left"></i></button>
+                            <span id="calendar-current-month-display">2026년 6월</span>
+                            <button id="calendar-next-month-btn" class="calendar-nav-btn"><i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="calendar-planner-body">
+                        <div class="calendar-grids-wrapper">
+                            <!-- 좌측: 지난달 달력 -->
+                            <div class="calendar-container-left">
+                                <div class="calendar-month-name" id="prev-month-name-display">2026년 5월</div>
+                                <div class="calendar-grid-header">
+                                    <div class="grid-header-day text-sun" data-i18n="sun">일</div>
+                                    <div class="grid-header-day" data-i18n="mon">월</div>
+                                    <div class="grid-header-day" data-i18n="tue">화</div>
+                                    <div class="grid-header-day" data-i18n="wed">수</div>
+                                    <div class="grid-header-day" data-i18n="thu">목</div>
+                                    <div class="grid-header-day" data-i18n="fri">금</div>
+                                    <div class="grid-header-day text-sat" data-i18n="sat">토</div>
+                                </div>
+                                <div id="prev-month-days-grid" class="calendar-days-grid"></div>
+                            </div>
+
+                            <!-- 우측: 이번달 달력 -->
+                            <div class="calendar-container-right">
+                                <div class="calendar-month-name" id="curr-month-name-display">2026년 6월</div>
+                                <div class="calendar-grid-header">
+                                    <div class="grid-header-day text-sun" data-i18n="sun">일</div>
+                                    <div class="grid-header-day" data-i18n="mon">월</div>
+                                    <div class="grid-header-day" data-i18n="tue">화</div>
+                                    <div class="grid-header-day" data-i18n="wed">수</div>
+                                    <div class="grid-header-day" data-i18n="thu">목</div>
+                                    <div class="grid-header-day" data-i18n="fri">금</div>
+                                    <div class="grid-header-day text-sat" data-i18n="sat">토</div>
+                                </div>
+                                <div id="curr-month-days-grid" class="calendar-days-grid"></div>
+                            </div>
+                        </div>
+
+                        <!-- 우측/하단: 계획 세우기 패널 -->
+                        <div class="calendar-plans-panel">
+                            <div class="plans-panel-header">
+                                <h4 id="selected-date-display">2026.06.11 (목)</h4>
+                                <p class="plans-subtitle" data-i18n="daily_plans">선택일 계획</p>
+                            </div>
+                            <div id="plans-list-container" class="plans-list-container">
+                                <!-- 선택된 날짜의 계획 목록이 동적으로 들어감 -->
+                                <div class="no-plans-message" data-i18n="no_plans">등록된 계획이 없습니다.</div>
+                            </div>
+                            <form id="add-plan-form" class="add-plan-form">
+                                <input type="text" id="plan-input" placeholder="새로운 계획 입력..." data-i18n-placeholder="add_plan_placeholder" required autocomplete="off">
+                                <button type="submit" class="plan-add-btn" data-i18n="add">추가</button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            <!-- 우측 열 (오늘 할 일, 장기 메모) -->
+            <div class="right-column">
+                <!-- 오늘의 할 일 컨테이너 (메인 페이지 고정 노출) -->
+                <div id="todo-list-container" class="todo-list-container">
+                    <div class="todo-header">
+                        <h3 data-i18n="today_todo">오늘의 할 일</h3>
+                    </div>
+                    <p class="todo-reset-info" data-i18n="todo_reset_info" style="font-size: 0.75em; color: #9ca3af; margin-bottom: 5px; text-align: center;">매일 오전 00시에 자동 초기화됩니다.</p>
+                    <div class="reset-progress-container">
+                        <div id="todo-reset-progress"></div>
+                    </div>
+                    
+                    <form id="add-todo-form" class="flex-group">
+                        <input type="text" id="todo-input" data-i18n-placeholder="new_todo" placeholder="새로운 할 일" required>
+                        <button type="submit" class="add-btn" data-i18n="add">추가</button>
+                    </form>
+
+                    <ul id="todo-list"></ul>
+                </div>
+
+                <!-- 장기 메모 및 시스템 컨테이너 (메인 페이지 고정 노출) -->
+                <div id="notes-list-container" class="notes-list-container">
+                    <div class="notes-header">
+                        <h3 data-i18n="long_term_notes">장기 메모 & 시스템</h3>
+                        <div class="notes-header-actions">
+                            <button id="add-note-btn" class="add-note-btn" title="새 메모 추가"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+                    </div>
+                    <p class="notes-desc" data-i18n="notes_desc" style="font-size: 0.75em; color: #9ca3af; margin-bottom: 10px; text-align: center;">직접 지우기 전까지 보존되는 장기 계획 메모장입니다.</p>
+                    
+                    <div id="notes-items-wrapper" class="notes-items-wrapper">
+                        <!-- 스티커 메모가 스크립트에 의해 여기에 생성됨 -->
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <div class="utility-buttons">
-            <button id="todo-toggle-btn" class="utility-btn" title="할 일 목록">
-                <i class="fa-solid fa-list-check"></i>
-            </button>
             <select id="language-select" class="utility-btn" style="width: auto; padding: 0 10px; font-size: 0.9em; cursor: pointer; text-align: center; display: inline-flex;" title="Language">
                 <option value="ko">🇰🇷</option>
                 <option value="en">🇺🇸</option>
                 <option value="ja">🇯🇵</option>
             </select>
         </div>
-
-        <div id="todo-list-container" class="todo-list-container" style="display:none;">
-            <div class="todo-header">
-                <h3 data-i18n="today_todo">오늘의 할 일</h3>
-                <button id="close-todoList-btn" class="close-btn">&times;</button>
-            </div>
-            <p class="todo-reset-info" data-i18n="todo_reset_info" style="font-size: 0.75em; color: #9ca3af; margin-bottom: 5px; text-align: center;">매일 오전 00시에 자동 초기화됩니다.</p>
-            <div class="reset-progress-container">
-                <div id="todo-reset-progress"></div>
-            </div>
-            
-            <form id="add-todo-form" class="flex-group">
-                <input type="text" id="todo-input" data-i18n-placeholder="new_todo" placeholder="새로운 할 일" required>
-                <button type="submit" class="add-btn" data-i18n="add">추가</button>
-            </form>
-
-            <ul id="todo-list"></ul>
-        </div>
     </div>
 
-    <!-- 우측 사이드바 (집중 모드 및 관여 주식) -->
-    <div class="right-sidebar">
-        <!-- 집중 모드 퀵 컨트롤 패널 (메인 화면) -->
-        <div class="focus-quick-control">
-            <div class="focus-quick-header">
-                <span class="focus-quick-title">
-                    <i class="fa-solid fa-fire-flame-curved"></i>
-                    <span data-i18n="focus_mode">집중 모드</span>
-                </span>
-            </div>
-            <div class="focus-quick-body">
-                <div class="focus-quick-row">
-                    <span data-i18n="manual_activation">수동 활성화</span>
-                    <label class="switch">
-                        <input type="checkbox" id="focus-mode-toggle">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="focus-quick-row" style="margin-top: 8px;">
-                    <span data-i18n="schedule_reservation">스케줄 예약</span>
-                    <label class="switch">
-                        <input type="checkbox" id="focus-schedule-toggle">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div id="focus-time-controls" class="focus-quick-time" style="margin-top: 10px;">
-                    <div class="time-input-group">
-                        <span data-i18n="start_time" style="font-size: 0.85em; flex-shrink: 0; width: 85px;">시작 시간:</span>
-                        <input type="time" id="focus-start-time" class="focus-time-input">
-                    </div>
-                    <div class="time-input-group" style="margin-top: 6px;">
-                        <span data-i18n="end_time" style="font-size: 0.85em; flex-shrink: 0; width: 85px;">종료 시간:</span>
-                        <input type="time" id="focus-end-time" class="focus-time-input">
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+
 
     <!-- 바로가기 직접 추가 모달 -->
     <div id="add-shortcut-modal" class="shortcut-modal-overlay" style="display:none;">

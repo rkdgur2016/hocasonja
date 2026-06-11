@@ -69,5 +69,17 @@
   "temp_min_max": { "message": "Temp (Min/Max)" },
   "temp_current": { "message": "Current Temp" },
   "precipitation_probability": { "message": "Precip. Prob." },
-  "oil_price_title": { "message": "Oil Prices (Gas/Diesel)" }
+  "oil_price_title": { "message": "Oil Prices (Gas/Diesel)" },
+  "calendar_compare": { "message": "Calendar Planner" },
+  "calendar_planner_title": { "message": "Calendar Comparison & Planner" },
+  "sun": { "message": "S" },
+  "mon": { "message": "M" },
+  "tue": { "message": "T" },
+  "wed": { "message": "W" },
+  "thu": { "message": "T" },
+  "fri": { "message": "F" },
+  "sat": { "message": "S" },
+  "daily_plans": { "message": "Daily Plans" },
+  "no_plans": { "message": "No plans registered." },
+  "add_plan_placeholder": { "message": "Enter new plan..." }
 }

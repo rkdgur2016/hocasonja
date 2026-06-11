@@ -70,5 +70,17 @@
   "temp_min_max": { "message": "기온(최저/최고)" },
   "temp_current": { "message": "현재 기온" },
   "precipitation_probability": { "message": "강수 확률" },
-  "oil_price_title": { "message": "국내 유가 (휘/경)" }
+  "oil_price_title": { "message": "국내 유가 (휘/경)" },
+  "calendar_compare": { "message": "달력 비교/계획" },
+  "calendar_planner_title": { "message": "달력 비교 및 계획" },
+  "sun": { "message": "일" },
+  "mon": { "message": "월" },
+  "tue": { "message": "화" },
+  "wed": { "message": "수" },
+  "thu": { "message": "목" },
+  "fri": { "message": "금" },
+  "sat": { "message": "토" },
+  "daily_plans": { "message": "선택일 계획" },
+  "no_plans": { "message": "등록된 계획이 없습니다." },
+  "add_plan_placeholder": { "message": "새로운 계획 입력..." }
 }

@@ -65,6 +65,13 @@ async function applyTranslations() {
     loadNotes();
     refreshAllInfo();
     renderUserShortcuts();
+
+    // 언어 변경 시 달력 화면도 업데이트
+    const calContainer = document.getElementById('calendar-planner-container');
+    if (calContainer) {
+        updateMonthDisplay();
+        renderPlansPanel();
+    }
 }
 
 
@@ -759,11 +766,16 @@ function renderUserShortcuts() {
     `;
     
     if (shortcuts.length >= MAX_URLS) {
-        trigger.style.display = 'none';
+        trigger.classList.add('full');
     }
     
     trigger.onclick = () => {
         if (trigger.classList.contains('trash-mode')) return;
+        if (shortcuts.length >= MAX_URLS) {
+            const errorMsg = (currentTranslations['max_shortcuts_exceeded'] && currentTranslations['max_shortcuts_exceeded'].message) || '바로가기 개수가 초과되었습니다 (최대 10개)';
+            alert(errorMsg);
+            return;
+        }
         openAddShortcutModal();
     };
 
@@ -972,10 +984,11 @@ function setupDragAndDropEvents(el) {
             
             const shortcuts = getShortcuts();
             if (shortcuts.length >= MAX_URLS) {
-                trigger.style.display = 'none'; // 10媛쒕㈃ ?ㅼ떆 ?④?
+                trigger.classList.add('full');
             } else {
-                trigger.style.display = 'flex';
+                trigger.classList.remove('full');
             }
+            trigger.style.display = 'flex';
             
             const addTooltip = (currentTranslations['add_shortcut_or_folder'] && currentTranslations['add_shortcut_or_folder'].message) || '바로가기 / 폴더 추가';
             const addLabelText = (currentTranslations['add'] && currentTranslations['add'].message) || '추가';
@@ -1063,18 +1076,14 @@ document.addEventListener('DOMContentLoaded', () => {
     updateTime(); setInterval(updateTime, 1000);
     setupSearch(); 
     setupNotes();
+    setupCalendar();
     const savedEngine = localStorage.getItem(SEARCH_ENGINE_KEY) || 'google';
     updateSearchEngineUI(savedEngine);
     refreshAllInfo(); setInterval(refreshAllInfo, 1000 * 60 * 30);
     loadGoal(); loadTodos(); renderUserShortcuts(); loadSettings(); renderRecentSearches();
 
     // [?섏젙] Todo 由ъ뒪??珥덇린 媛?쒖꽦 ?ㅼ젙
-    const todoContainer = document.getElementById('todo-list-container');
-    const todos = JSON.parse(localStorage.getItem(TODO_STORAGE_KEY) || '[]');
-    if (todoContainer && todos.length > 0) {
-        todoContainer.style.display = 'flex'; 
-        todoContainer.classList.add('open');
-    }
+
 
     const googleBtn = document.getElementById('google-engine-btn');
     const naverBtn = document.getElementById('naver-engine-btn');
@@ -1093,16 +1102,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (input.value.trim()) { addTodo(input.value.trim()); input.value = ''; }
     };
 
-    document.getElementById('todo-toggle-btn').onclick = () => {
-        if (todoContainer.classList.contains('open')) {
-            todoContainer.classList.remove('open'); setTimeout(() => todoContainer.style.display = 'none', 300);
-        } else {
-            todoContainer.style.display = 'block'; setTimeout(() => todoContainer.classList.add('open'), 10);
-        }
-    };
-    document.getElementById('close-todoList-btn').onclick = () => {
-        todoContainer.classList.remove('open'); setTimeout(() => todoContainer.style.display = 'none', 300);
-    };
+
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
@@ -1437,6 +1437,255 @@ function renderNotes(notes) {
         item.appendChild(footer);
         wrapper.appendChild(item);
     });
+}
 
+// --- 달력 비교 및 계획 (Calendar Planner) 기능 ---
+const CALENDAR_PLANS_KEY = 'customNewTabCalendarPlans';
+let calendarCurrentYear;
+let calendarCurrentMonth;
+let calendarSelectedDateStr;
 
+function setupCalendar() {
+    const today = new Date();
+    calendarCurrentYear = today.getFullYear();
+    calendarCurrentMonth = today.getMonth();
+    calendarSelectedDateStr = `${calendarCurrentYear}-${String(calendarCurrentMonth + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    const prevBtn = document.getElementById('calendar-prev-month-btn');
+    const nextBtn = document.getElementById('calendar-next-month-btn');
+    const addForm = document.getElementById('add-plan-form');
+    const planInput = document.getElementById('plan-input');
+
+    if (!prevBtn || !nextBtn || !addForm || !planInput) return;
+
+    prevBtn.onclick = () => {
+        changeMonth(-1);
+    };
+
+    nextBtn.onclick = () => {
+        changeMonth(1);
+    };
+
+    addForm.onsubmit = (e) => {
+        e.preventDefault();
+        const planText = planInput.value.trim();
+        if (planText) {
+            addCalendarPlan(calendarSelectedDateStr, planText);
+            planInput.value = '';
+        }
+    };
+
+    // Render calendar immediately on page load
+    updateMonthDisplay();
+    renderCalendars();
+    renderPlansPanel();
+}
+
+function formatMonthName(year, monthIndex) {
+    const lang = localStorage.getItem('preferredLanguage') || 'ko';
+    const locale = lang === 'ko' ? 'ko-KR' : lang === 'ja' ? 'ja-JP' : 'en-US';
+    const date = new Date(year, monthIndex, 1);
+    return new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long' }).format(date);
+}
+
+function formatSelectedDateText(year, monthIndex, day) {
+    const lang = localStorage.getItem('preferredLanguage') || 'ko';
+    const locale = lang === 'ko' ? 'ko-KR' : lang === 'ja' ? 'ja-JP' : 'en-US';
+    const date = new Date(year, monthIndex, day);
+    return new Intl.DateTimeFormat(locale, { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' }).format(date);
+}
+
+function getCalendarPlans() {
+    return JSON.parse(localStorage.getItem(CALENDAR_PLANS_KEY) || '{}');
+}
+
+function saveCalendarPlans(plans) {
+    localStorage.setItem(CALENDAR_PLANS_KEY, JSON.stringify(plans));
+}
+
+function addCalendarPlan(dateStr, planText) {
+    const plans = getCalendarPlans();
+    if (!plans[dateStr]) {
+        plans[dateStr] = [];
+    }
+    plans[dateStr].push(planText);
+    saveCalendarPlans(plans);
+    renderCalendars();
+    renderPlansPanel();
+}
+
+function deleteCalendarPlan(dateStr, index) {
+    const plans = getCalendarPlans();
+    if (plans[dateStr]) {
+        plans[dateStr].splice(index, 1);
+        if (plans[dateStr].length === 0) {
+            delete plans[dateStr];
+        }
+        saveCalendarPlans(plans);
+        renderCalendars();
+        renderPlansPanel();
+    }
+}
+
+function changeMonth(offset) {
+    calendarCurrentMonth += offset;
+    if (calendarCurrentMonth < 0) {
+        calendarCurrentMonth = 11;
+        calendarCurrentYear--;
+    } else if (calendarCurrentMonth > 11) {
+        calendarCurrentMonth = 0;
+        calendarCurrentYear++;
+    }
+    updateMonthDisplay();
+    renderCalendars();
+}
+
+function updateMonthDisplay() {
+    const currentMonthDisplay = document.getElementById('calendar-current-month-display');
+    const prevMonthNameDisplay = document.getElementById('prev-month-name-display');
+    const currMonthNameDisplay = document.getElementById('curr-month-name-display');
+    
+    if (!currentMonthDisplay || !prevMonthNameDisplay || !currMonthNameDisplay) return;
+
+    const currentText = formatMonthName(calendarCurrentYear, calendarCurrentMonth);
+    currentMonthDisplay.textContent = currentText;
+    currMonthNameDisplay.textContent = currentText;
+    
+    let prevYear = calendarCurrentYear;
+    let prevMonth = calendarCurrentMonth - 1;
+    if (prevMonth < 0) {
+        prevMonth = 11;
+        prevYear--;
+    }
+    prevMonthNameDisplay.textContent = formatMonthName(prevYear, prevMonth);
+}
+
+function renderCalendars() {
+    const prevGrid = document.getElementById('prev-month-days-grid');
+    const currGrid = document.getElementById('curr-month-days-grid');
+    
+    if (!prevGrid || !currGrid) return;
+
+    let prevYear = calendarCurrentYear;
+    let prevMonth = calendarCurrentMonth - 1;
+    if (prevMonth < 0) {
+        prevMonth = 11;
+        prevYear--;
+    }
+
+    generateCalendarGrid(prevGrid, prevYear, prevMonth);
+    generateCalendarGrid(currGrid, calendarCurrentYear, calendarCurrentMonth);
+}
+
+function generateCalendarGrid(containerEl, year, month) {
+    containerEl.innerHTML = '';
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    const plans = getCalendarPlans();
+    const totalCells = 42;
+    
+    const prevMonthDays = new Date(year, month, 0).getDate();
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+        const cell = document.createElement('div');
+        cell.className = 'day-cell other-month';
+        const dayNum = prevMonthDays - i;
+        cell.innerHTML = `<span class="day-number">${dayNum}</span>`;
+        containerEl.appendChild(cell);
+    }
+    
+    const today = new Date();
+    for (let day = 1; day <= totalDays; day++) {
+        const cell = document.createElement('div');
+        cell.className = 'day-cell';
+        
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        
+        const dateObj = new Date(year, month, day);
+        const dayOfWeek = dateObj.getDay();
+        if (dayOfWeek === 0) cell.classList.add('sun');
+        if (dayOfWeek === 6) cell.classList.add('sat');
+        
+        if (today.getFullYear() === year && today.getMonth() === month && today.getDate() === day) {
+            cell.classList.add('today');
+        }
+        
+        if (calendarSelectedDateStr === dateStr) {
+            cell.classList.add('selected');
+        }
+        
+        cell.innerHTML = `<span class="day-number">${day}</span>`;
+        
+        const dayPlans = plans[dateStr] || [];
+        if (dayPlans.length > 0) {
+            const previewContainer = document.createElement('div');
+            previewContainer.className = 'day-plans-indicator';
+            
+            const dot = document.createElement('div');
+            dot.className = 'plan-marker-dot';
+            dot.title = `${dayPlans.length}개의 계획`;
+            previewContainer.appendChild(dot);
+            
+            cell.appendChild(previewContainer);
+        }
+        
+        cell.onclick = () => {
+            document.querySelectorAll('.day-cell.selected').forEach(c => c.classList.remove('selected'));
+            cell.classList.add('selected');
+            calendarSelectedDateStr = dateStr;
+            renderPlansPanel();
+        };
+        
+        containerEl.appendChild(cell);
+    }
+    
+    const remainingCells = totalCells - (firstDayIndex + totalDays);
+    for (let i = 1; i <= remainingCells; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'day-cell other-month';
+        cell.innerHTML = `<span class="day-number">${i}</span>`;
+        containerEl.appendChild(cell);
+    }
+}
+
+function renderPlansPanel() {
+    const displayEl = document.getElementById('selected-date-display');
+    const listContainer = document.getElementById('plans-list-container');
+    
+    if (!calendarSelectedDateStr || !displayEl || !listContainer) return;
+    
+    const [year, monthStr, dayStr] = calendarSelectedDateStr.split('-').map(Number);
+    displayEl.textContent = formatSelectedDateText(year, monthStr - 1, dayStr);
+    
+    listContainer.innerHTML = '';
+    const plans = getCalendarPlans();
+    const dayPlans = plans[calendarSelectedDateStr] || [];
+    
+    if (dayPlans.length === 0) {
+        const noPlans = document.createElement('div');
+        noPlans.className = 'no-plans-message';
+        noPlans.setAttribute('data-i18n', 'no_plans');
+        noPlans.textContent = t('no_plans', '등록된 계획이 없습니다.');
+        listContainer.appendChild(noPlans);
+    } else {
+        dayPlans.forEach((planText, index) => {
+            const item = document.createElement('div');
+            item.className = 'plan-item';
+            
+            const textEl = document.createElement('span');
+            textEl.className = 'plan-item-text';
+            textEl.textContent = planText;
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'plan-delete-btn';
+            deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+            deleteBtn.title = t('delete', '삭제');
+            deleteBtn.onclick = () => {
+                deleteCalendarPlan(calendarSelectedDateStr, index);
+            };
+            
+            item.appendChild(textEl);
+            item.appendChild(deleteBtn);
+            listContainer.appendChild(item);
+        });
+    }
 }

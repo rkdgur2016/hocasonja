@@ -70,5 +70,17 @@
   "temp_min_max": { "message": "気温(最低/最高)" },
   "temp_current": { "message": "現在気温" },
   "precipitation_probability": { "message": "降水確率" },
-  "oil_price_title": { "message": "国内油価 (ガソリン/軽油)" }
+  "oil_price_title": { "message": "国内油価 (ガソリン/軽油)" },
+  "calendar_compare": { "message": "カレンダー比較/計画" },
+  "calendar_planner_title": { "message": "カレンダー比較と計画" },
+  "sun": { "message": "日" },
+  "mon": { "message": "月" },
+  "tue": { "message": "火" },
+  "wed": { "message": "水" },
+  "thu": { "message": "木" },
+  "fri": { "message": "金" },
+  "sat": { "message": "土" },
+  "daily_plans": { "message": "選択日の計画" },
+  "no_plans": { "message": "登録された計画がありません。" },
+  "add_plan_placeholder": { "message": "新しい計画を入力..." }
 }
