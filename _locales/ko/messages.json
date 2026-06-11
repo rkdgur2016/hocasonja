@@ -82,5 +82,14 @@
   "sat": { "message": "토" },
   "daily_plans": { "message": "선택일 계획" },
   "no_plans": { "message": "등록된 계획이 없습니다." },
-  "add_plan_placeholder": { "message": "새로운 계획 입력..." }
+  "add_plan_placeholder": { "message": "새로운 계획 입력..." },
+  "repeat_none": { "message": "일회성" },
+  "repeat_weekly": { "message": "매주" },
+  "repeat_monthly": { "message": "매월" },
+  "repeat_weekly_short": { "message": "매주" },
+  "repeat_weekly_desc": { "message": "매주 반복되는 고정 일정입니다." },
+  "repeat_monthly_short": { "message": "매월" },
+  "repeat_monthly_desc": { "message": "매월 반복되는 고정 일정입니다." },
+  "repeat_none_short": { "message": "일회성" },
+  "repeat_none_desc": { "message": "일회성 일정입니다." }
 }

@@ -1298,13 +1298,25 @@ body.focus-mode-active .add-shortcut-trigger.trash-mode.drag-hover .shortcut-ico
     justify-content: center;
     align-items: center;
     padding-bottom: 2px;
+    gap: 3px;
 }
 
 .plan-marker-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
+}
+
+.plan-marker-dot.dot-none {
     background: var(--accent-color);
+}
+
+.plan-marker-dot.dot-weekly {
+    background: #3b82f6;
+}
+
+.plan-marker-dot.dot-monthly {
+    background: #10b981;
 }
 
 /* Sidebar plans panel */
@@ -1423,6 +1435,46 @@ body.focus-mode-active .add-shortcut-trigger.trash-mode.drag-hover .shortcut-ico
     opacity: 0.9;
 }
 
+.plan-repeat-select {
+    padding: 8px 6px;
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    font-size: 0.8em;
+    outline: none;
+    background: var(--card-bg);
+    color: var(--text-primary);
+    cursor: pointer;
+    max-width: 80px;
+}
+
+.plan-repeat-select:focus {
+    border-color: var(--accent-color);
+}
+
+.plan-repeat-badge {
+    font-size: 0.7em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    margin-left: 6px;
+    flex-shrink: 0;
+}
+
+.plan-repeat-badge.badge-weekly {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+.plan-repeat-badge.badge-monthly {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.plan-repeat-badge.badge-none {
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--accent-color);
+}
+
 /* Dark Mode / Focus Mode Active Overrides for Calendar */
 body.focus-mode-active .calendar-planner-container {
     background: #1e1e1e;
@@ -1494,8 +1546,16 @@ body.focus-mode-active .day-number {
     color: #d4d4d8;
 }
 
-body.focus-mode-active .plan-marker-dot {
+body.focus-mode-active .plan-marker-dot.dot-none {
     background: #60a5fa;
+}
+
+body.focus-mode-active .plan-marker-dot.dot-weekly {
+    background: #60a5fa;
+}
+
+body.focus-mode-active .plan-marker-dot.dot-monthly {
+    background: #34d399;
 }
 
 body.focus-mode-active .calendar-plans-panel {
@@ -1541,6 +1601,31 @@ body.focus-mode-active #plan-input {
 
 body.focus-mode-active #plan-input:focus {
     border-color: #60a5fa;
+}
+
+body.focus-mode-active .plan-repeat-select {
+    background: #27272a;
+    border-color: rgba(255,255,255,0.1);
+    color: #eeeeee;
+}
+
+body.focus-mode-active .plan-repeat-select:focus {
+    border-color: #60a5fa;
+}
+
+body.focus-mode-active .plan-repeat-badge.badge-weekly {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+}
+
+body.focus-mode-active .plan-repeat-badge.badge-monthly {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+}
+
+body.focus-mode-active .plan-repeat-badge.badge-none {
+    background: rgba(96, 165, 250, 0.2);
+    color: #60a5fa;
 }
 
 body.focus-mode-active .plan-add-btn {

@@ -1455,6 +1455,7 @@ function setupCalendar() {
     const nextBtn = document.getElementById('calendar-next-month-btn');
     const addForm = document.getElementById('add-plan-form');
     const planInput = document.getElementById('plan-input');
+    const repeatSelect = document.getElementById('plan-repeat-select');
 
     if (!prevBtn || !nextBtn || !addForm || !planInput) return;
 
@@ -1469,9 +1470,13 @@ function setupCalendar() {
     addForm.onsubmit = (e) => {
         e.preventDefault();
         const planText = planInput.value.trim();
+        const repeatType = repeatSelect ? repeatSelect.value : 'none';
         if (planText) {
-            addCalendarPlan(calendarSelectedDateStr, planText);
+            addCalendarPlan(calendarSelectedDateStr, planText, repeatType);
             planInput.value = '';
+            if (repeatSelect) {
+                repeatSelect.value = 'none';
+            }
         }
     };
 
@@ -1499,16 +1504,72 @@ function getCalendarPlans() {
     return JSON.parse(localStorage.getItem(CALENDAR_PLANS_KEY) || '{}');
 }
 
+function getPlansForDate(targetDateStr, plans = getCalendarPlans()) {
+    const result = [];
+    const targetDate = new Date(targetDateStr);
+    const targetYear = targetDate.getFullYear();
+    const targetMonth = targetDate.getMonth();
+    const targetDay = targetDate.getDate();
+    const targetDayOfWeek = targetDate.getDay();
+    
+    for (const [createdDateStr, dayPlans] of Object.entries(plans)) {
+        if (!Array.isArray(dayPlans)) continue;
+        
+        dayPlans.forEach((plan, index) => {
+            let planText = '';
+            let repeatType = 'none';
+            
+            if (typeof plan === 'string') {
+                planText = plan;
+                repeatType = 'none';
+            } else if (plan && typeof plan === 'object') {
+                planText = plan.text || '';
+                repeatType = plan.repeat || 'none';
+            }
+            
+            if (repeatType === 'none') {
+                if (createdDateStr === targetDateStr) {
+                    result.push({ text: planText, repeat: repeatType, createdDateStr, originalIndex: index });
+                }
+            } else if (repeatType === 'monthly') {
+                const [cYear, cMonth, cDay] = createdDateStr.split('-').map(Number);
+                if (cDay === targetDay) {
+                    const createdDate = new Date(cYear, cMonth - 1, cDay);
+                    createdDate.setHours(0,0,0,0);
+                    const tDate = new Date(targetYear, targetMonth, targetDay);
+                    tDate.setHours(0,0,0,0);
+                    if (tDate >= createdDate) {
+                        result.push({ text: planText, repeat: repeatType, createdDateStr, originalIndex: index });
+                    }
+                }
+            } else if (repeatType === 'weekly') {
+                const [cYear, cMonth, cDay] = createdDateStr.split('-').map(Number);
+                const createdDate = new Date(cYear, cMonth - 1, cDay);
+                createdDate.setHours(0,0,0,0);
+                const tDate = new Date(targetYear, targetMonth, targetDay);
+                tDate.setHours(0,0,0,0);
+                if (tDate >= createdDate && createdDate.getDay() === targetDayOfWeek) {
+                    result.push({ text: planText, repeat: repeatType, createdDateStr, originalIndex: index });
+                }
+            }
+        });
+    }
+    return result;
+}
+
 function saveCalendarPlans(plans) {
     localStorage.setItem(CALENDAR_PLANS_KEY, JSON.stringify(plans));
 }
 
-function addCalendarPlan(dateStr, planText) {
+function addCalendarPlan(dateStr, planText, repeatType = 'none') {
     const plans = getCalendarPlans();
     if (!plans[dateStr]) {
         plans[dateStr] = [];
     }
-    plans[dateStr].push(planText);
+    plans[dateStr].push({
+        text: planText,
+        repeat: repeatType
+    });
     saveCalendarPlans(plans);
     renderCalendars();
     renderPlansPanel();
@@ -1615,15 +1676,24 @@ function generateCalendarGrid(containerEl, year, month) {
         
         cell.innerHTML = `<span class="day-number">${day}</span>`;
         
-        const dayPlans = plans[dateStr] || [];
+        const dayPlans = getPlansForDate(dateStr, plans);
         if (dayPlans.length > 0) {
             const previewContainer = document.createElement('div');
             previewContainer.className = 'day-plans-indicator';
             
-            const dot = document.createElement('div');
-            dot.className = 'plan-marker-dot';
-            dot.title = `${dayPlans.length}개의 계획`;
-            previewContainer.appendChild(dot);
+            const repeatTypes = [...new Set(dayPlans.map(p => p.repeat || 'none'))];
+            repeatTypes.forEach(type => {
+                const dot = document.createElement('div');
+                dot.className = `plan-marker-dot dot-${type}`;
+                
+                const count = dayPlans.filter(p => (p.repeat || 'none') === type).length;
+                let typeText = t('repeat_none', '일회성');
+                if (type === 'weekly') typeText = t('repeat_weekly', '매주');
+                if (type === 'monthly') typeText = t('repeat_monthly', '매월');
+                dot.title = `${typeText}: ${count}`;
+                
+                previewContainer.appendChild(dot);
+            });
             
             cell.appendChild(previewContainer);
         }
@@ -1658,7 +1728,7 @@ function renderPlansPanel() {
     
     listContainer.innerHTML = '';
     const plans = getCalendarPlans();
-    const dayPlans = plans[calendarSelectedDateStr] || [];
+    const dayPlans = getPlansForDate(calendarSelectedDateStr, plans);
     
     if (dayPlans.length === 0) {
         const noPlans = document.createElement('div');
@@ -1667,23 +1737,46 @@ function renderPlansPanel() {
         noPlans.textContent = t('no_plans', '등록된 계획이 없습니다.');
         listContainer.appendChild(noPlans);
     } else {
-        dayPlans.forEach((planText, index) => {
+        dayPlans.forEach((plan) => {
             const item = document.createElement('div');
-            item.className = 'plan-item';
+            item.className = `plan-item repeat-${plan.repeat || 'none'}`;
+            
+            const textWrapper = document.createElement('div');
+            textWrapper.className = 'plan-item-text-wrapper';
+            textWrapper.style.display = 'flex';
+            textWrapper.style.alignItems = 'center';
+            textWrapper.style.flex = '1';
+            textWrapper.style.overflow = 'hidden';
             
             const textEl = document.createElement('span');
             textEl.className = 'plan-item-text';
-            textEl.textContent = planText;
+            textEl.textContent = plan.text;
+            textWrapper.appendChild(textEl);
+            
+            const repeatType = plan.repeat || 'none';
+            const badge = document.createElement('span');
+            badge.className = `plan-repeat-badge badge-${repeatType}`;
+            if (repeatType === 'weekly') {
+                badge.textContent = t('repeat_weekly_short', '매주');
+                badge.title = t('repeat_weekly_desc', '매주 반복되는 고정 일정입니다.');
+            } else if (repeatType === 'monthly') {
+                badge.textContent = t('repeat_monthly_short', '매월');
+                badge.title = t('repeat_monthly_desc', '매월 반복되는 고정 일정입니다.');
+            } else {
+                badge.textContent = t('repeat_none_short', '일회성');
+                badge.title = t('repeat_none_desc', '일회성 일정입니다.');
+            }
+            textWrapper.appendChild(badge);
             
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'plan-delete-btn';
             deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
             deleteBtn.title = t('delete', '삭제');
             deleteBtn.onclick = () => {
-                deleteCalendarPlan(calendarSelectedDateStr, index);
+                deleteCalendarPlan(plan.createdDateStr, plan.originalIndex);
             };
             
-            item.appendChild(textEl);
+            item.appendChild(textWrapper);
             item.appendChild(deleteBtn);
             listContainer.appendChild(item);
         });

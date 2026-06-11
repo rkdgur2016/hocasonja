@@ -152,6 +152,11 @@
                             </div>
                             <form id="add-plan-form" class="add-plan-form">
                                 <input type="text" id="plan-input" placeholder="새로운 계획 입력..." data-i18n-placeholder="add_plan_placeholder" required autocomplete="off">
+                                <select id="plan-repeat-select" class="plan-repeat-select">
+                                    <option value="none" data-i18n="repeat_none">일회성</option>
+                                    <option value="weekly" data-i18n="repeat_weekly">매주</option>
+                                    <option value="monthly" data-i18n="repeat_monthly">매월</option>
+                                </select>
                                 <button type="submit" class="plan-add-btn" data-i18n="add">추가</button>
                             </form>
                         </div>

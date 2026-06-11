@@ -82,5 +82,14 @@
   "sat": { "message": "土" },
   "daily_plans": { "message": "選択日の計画" },
   "no_plans": { "message": "登録された計画がありません。" },
-  "add_plan_placeholder": { "message": "新しい計画を入力..." }
+  "add_plan_placeholder": { "message": "新しい計画を入力..." },
+  "repeat_none": { "message": "一回性" },
+  "repeat_weekly": { "message": "毎週" },
+  "repeat_monthly": { "message": "毎月" },
+  "repeat_weekly_short": { "message": "毎週" },
+  "repeat_weekly_desc": { "message": "毎週繰り返される固定スケジュールです。" },
+  "repeat_monthly_short": { "message": "毎月" },
+  "repeat_monthly_desc": { "message": "毎月繰り返される固定スケジュールです。" },
+  "repeat_none_short": { "message": "一回性" },
+  "repeat_none_desc": { "message": "一回限りのスケジュールです。" }
 }

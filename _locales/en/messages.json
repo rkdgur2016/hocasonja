@@ -81,5 +81,14 @@
   "sat": { "message": "S" },
   "daily_plans": { "message": "Daily Plans" },
   "no_plans": { "message": "No plans registered." },
-  "add_plan_placeholder": { "message": "Enter new plan..." }
+  "add_plan_placeholder": { "message": "Enter new plan..." },
+  "repeat_none": { "message": "Once" },
+  "repeat_weekly": { "message": "Weekly" },
+  "repeat_monthly": { "message": "Monthly" },
+  "repeat_weekly_short": { "message": "Weekly" },
+  "repeat_weekly_desc": { "message": "This is a fixed schedule that repeats every week." },
+  "repeat_monthly_short": { "message": "Monthly" },
+  "repeat_monthly_desc": { "message": "This is a fixed schedule that repeats every month." },
+  "repeat_none_short": { "message": "Once" },
+  "repeat_none_desc": { "message": "This is a one-time schedule." }
 }
