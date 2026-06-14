@@ -6,7 +6,7 @@
   "goal_placeholder": { "message": "🔥 目標を設定して、毎日思い出しましょう 🔥" },
   "growth_message": { "message": "Pacemakerがあなたの成長をサポートします。" },
   "exchange_rate": { "message": "為替レート (KRW)" },
-  "weather_info": { "message": "天気 (最低/最高 - 現在 - 降水確率)" },
+  "weather_info": { "message": "天気 (最低/最高 - 現在)" },
   "oil_prices": { "message": "油価 (ガソリン/軽油)" },
   "google_search": { "message": "Google検索" },
   "naver_search": { "message": "Naver検索" },

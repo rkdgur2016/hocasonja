@@ -60,10 +60,9 @@ async function applyTranslations() {
         }
     });
     
-    // 언어 변경 시에 목표 문구, 실시간 정보 및 바로가기 목록 동적 업데이트
+    // 언어 변경 시에 목표 문구 및 바로가기 목록 동적 업데이트
     await loadGoal();
     loadNotes();
-    refreshAllInfo();
     renderUserShortcuts();
 
     // 언어 변경 시 달력 화면도 업데이트
@@ -212,119 +211,7 @@ function updateTimeControlsState() {
     }
 }
 
-// --- 실시간 정보 기능 ---
 
-async function fetchExchangeRate() {
-    try {
-        const response = await fetch('https://open.er-api.com/v6/latest/USD');
-        if (!response.ok) throw new Error('API request failed');
-        const data = await response.json();
-        const rate = Math.round(data.rates.KRW);
-        const exchangeRateEl = document.getElementById('exchange-rate');
-        if (exchangeRateEl) {
-            exchangeRateEl.innerHTML = `
-                <div class="info-label">${t('realtime_exchange_rate', '실시간 환율 (USD/KRW)')}</div>
-                <div class="info-value"><i class="fas fa-arrow-trend-up" style="color: #10b981; margin-right: 4px;"></i> <span>${rate.toLocaleString()}${t('won_suffix', '원')}</span></div>
-            `;
-        }
-    } catch (error) {
-        console.error('환율 오류:', error);
-        const exchangeRateEl = document.getElementById('exchange-rate');
-        if (exchangeRateEl) {
-            exchangeRateEl.innerHTML = `
-                <div class="info-label">${t('exchange_rate', '환율 (USD/KRW)')}</div>
-                <div class="info-value"><i class="fas fa-minus trend-neutral"></i> <span>1,410${t('won_suffix', '원')}</span></div>
-            `;
-        }
-    }
-}
-
-async function fetchWeather() {
-    try {
-        const lang = localStorage.getItem('preferredLanguage') || 'ko';
-        let lat = '37.5665';
-        let lon = '126.9780'; // Default Seoul
-        
-        if (lang === 'ja') {
-            lat = '35.6762';
-            lon = '139.6503'; // Tokyo
-        } else if (lang === 'en') {
-            lat = '38.9072';
-            lon = '-77.0369'; // Washington D.C.
-        }
-        
-        const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&hourly=precipitation_probability&daily=temperature_2m_max,temperature_2m_min&forecast_days=1`);
-        const data = await response.json();
-        
-        if (data.timezone) {
-            localStorage.setItem('userTimezone', data.timezone);
-        }
-        
-        const temp = data.current.temperature_2m;
-        const maxTemp = data.daily.temperature_2m_max[0];
-        const minTemp = data.daily.temperature_2m_min[0];
-        const now = new Date();
-        const rainProb = data.hourly.precipitation_probability[now.getHours()];
-        
-        const weatherEl = document.getElementById('weather-info');
-        if (weatherEl) {
-            let icon = '<i class="fas fa-cloud-sun"></i>';
-            const code = data.current.weather_code;
-            if (code === 0) icon = '<i class="fas fa-sun" style="color: #f59e0b;"></i>';
-            else if (code >= 1 && code <= 3) icon = '<i class="fas fa-cloud-sun" style="color: #60a5fa;"></i>';
-            else if (code >= 45) icon = '<i class="fas fa-smog" style="color: #94a3b8;"></i>';
-            else if (code >= 51) icon = '<i class="fas fa-cloud-showers-heavy" style="color: #3b82f6;"></i>';
-
-            weatherEl.innerHTML = `
-                <div class="weather-slide active">
-                    <div class="info-label">${t('temp_min_max', '기온(최저/최고)')}</div>
-                    <div class="info-value">${icon} <span>${minTemp}° / ${maxTemp}°</span></div>
-                </div>
-                <div class="weather-slide">
-                    <div class="info-label">${t('temp_current', '현재 기온')}</div>
-                    <div class="info-value">${icon} <span>${temp}°C</span></div>
-                </div>
-                <div class="weather-slide">
-                    <div class="info-label">${t('precipitation_probability', '강수 확률')}</div>
-                    <div class="info-value"><i class="fas fa-umbrella" style="color: #3b82f6;"></i> <span>${rainProb}%</span></div>
-                </div>
-            `;
-            startWeatherSlider();
-        }
-    } catch (error) { console.error('날씨 fetch 오류:', error); }
-}
-
-function startWeatherSlider() {
-    const slides = document.querySelectorAll('.weather-slide');
-    if (slides.length === 0) return;
-    let currentSlide = 0;
-
-    if (window.weatherInterval) clearInterval(window.weatherInterval);
-    
-    window.weatherInterval = setInterval(() => {
-        slides[currentSlide].classList.remove('active');
-        currentSlide = (currentSlide + 1) % slides.length;
-        slides[currentSlide].classList.add('active');
-    }, 4000);
-}
-
-async function fetchOilPrices() {
-    try {
-        const gasPrice = 2019;
-        const dieselPrice = 2008;
-        const oilEl = document.getElementById('oil-prices');
-        if (oilEl) {
-            oilEl.innerHTML = `
-                <div class="info-label">${t('oil_price_title', '국내 유가 (휘/경)')}</div>
-                <div class="info-value"><i class="fas fa-gas-pump" style="color: #10b981;"></i> <span>${gasPrice} / ${dieselPrice}</span></div>
-            `;
-        }
-    } catch (error) { console.error('유가 오류:', error); }
-}
-
-function refreshAllInfo() {
-    fetchExchangeRate(); fetchWeather(); fetchOilPrices();
-}
 
 // --- 理쒓렐 寃??湲곕줉 ---
 function saveRecentSearch(query) {
@@ -1079,7 +966,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupCalendar();
     const savedEngine = localStorage.getItem(SEARCH_ENGINE_KEY) || 'google';
     updateSearchEngineUI(savedEngine);
-    refreshAllInfo(); setInterval(refreshAllInfo, 1000 * 60 * 30);
     loadGoal(); loadTodos(); renderUserShortcuts(); loadSettings(); renderRecentSearches();
 
     // [?섏젙] Todo 由ъ뒪??珥덇린 媛?쒖꽦 ?ㅼ젙

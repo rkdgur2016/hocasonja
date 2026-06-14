@@ -6,7 +6,7 @@
   "goal_placeholder": { "message": "🔥 Set your goal and be reminded every day 🔥" },
   "growth_message": { "message": "Pacemaker helps you grow." },
   "exchange_rate": { "message": "Exchange Rate (KRW)" },
-  "weather_info": { "message": "Weather (Low/High - Current - Precip.)" },
+  "weather_info": { "message": "Weather (Low/High - Current)" },
   "oil_prices": { "message": "Oil Prices (Gas/Diesel)" },
   "google_search": { "message": "Google Search" },
   "naver_search": { "message": "Naver Search" },

@@ -6,7 +6,7 @@
   "goal_placeholder": { "message": "🔥 당신의 목표를 설정하고 매일 상기하세요 🔥" },
   "growth_message": { "message": "Pacemaker가 당신의 성장을 돕습니다." },
   "exchange_rate": { "message": "환율 (KRW)" },
-  "weather_info": { "message": "날씨 (최저/최고 - 현재 - 강수확률)" },
+  "weather_info": { "message": "날씨 (최저/최고 - 현재)" },
   "oil_prices": { "message": "유가 (휘/경)" },
   "google_search": { "message": "Google Search" },
   "naver_search": { "message": "Naver Search" },

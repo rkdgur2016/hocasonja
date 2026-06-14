@@ -64,10 +64,10 @@ body.focus-mode-active {
 }
 
 #goal-text {
-    font-size: 1.2em;
+    font-size: 1.5em;
     font-weight: 600;
     cursor: pointer;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
 }
 
 #information-text {
