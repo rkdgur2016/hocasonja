@@ -124,8 +124,28 @@ function updateTime() {
     
     checkFocusModeSchedule(lastKnownTimeStr); 
 
-    // [異붽?] 珥덇린??吏꾪뻾瑜??낅뜲?댄듃
+    // 00시 자동 초기화 확인
+    if (checkAndResetTodos()) {
+        loadTodos();
+    }
+
+    // [추가] 초기화 진행률 업데이트
     updateTodoResetProgress();
+}
+
+function checkAndResetTodos() {
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const lastResetDate = localStorage.getItem(LAST_RESET_DATE_KEY);
+    
+    if (lastResetDate !== todayStr) {
+        if (lastResetDate) {
+            localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify([]));
+        }
+        localStorage.setItem(LAST_RESET_DATE_KEY, todayStr);
+        return true;
+    }
+    return false;
 }
 
 // [?섏젙] 珥덇린??吏꾪뻾瑜?怨꾩궛 諛??낅뜲?댄듃 (100% -> 0%)
@@ -1134,6 +1154,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function loadTodos() {
+    checkAndResetTodos();
     let todos = JSON.parse(localStorage.getItem(TODO_STORAGE_KEY) || '[]');
     
     // ?꾨즺 ?щ?瑜?湲곗??쇰줈 ?뺣젹 (false: 誘몄셿猷? true: ?꾨즺)
